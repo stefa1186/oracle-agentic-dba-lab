@@ -107,3 +107,7 @@ This is a personal learning lab. Never point an AI agent at a production
 database based on these scripts without your own review. Oracle features such
 as AWR, ASH and SQL Tuning Advisor require the appropriate licences on
 Enterprise Edition.
+
+## License
+
+MIT: see [LICENSE](LICENSE). Run it only in an isolated lab, never on a database that matters.
