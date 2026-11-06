@@ -1,0 +1,29 @@
+# =============================================================================
+# model_pins.txt: the exact local models of post 12.
+#
+# One line per model:  <Ollama tag>  <manifest digest>  <bytes>
+#   tag     what you pull (ollama pull <tag>)
+#   digest  SHA-256 of the model's manifest in Ollama's registry: Ollama's
+#           own model ID (ollama list shows its first 12 characters). A tag
+#           can be re-published; the digest can't. 02_prepare_online.sh
+#           refuses to continue if the pulled model has another digest.
+#   bytes   size of all its layers (the model file, its license, its
+#           parameters), from the same manifest
+# Read from registry.ollama.ai on 2026-11-06.
+# =============================================================================
+nemotron-3-nano:4b-q4_K_M        6cc467f054393a55e98a74098abde0c762ffb6d1d8cd64becf30458f38886197   2837596648
+nemotron-3-nano:30b-a3b-q4_K_M   b725f11174073334edd0c2ff396b8d4e66d7dab22a5a63717ccad5a08a270cf1  24271934378
+# Another family, the same size class as the 30B (35B in total, 3B active):
+# Alibaba's Qwen3.6, as Ollama ships it (its layers include a vision
+# projector, unused here). Licence: Apache 2.0. Read on 2026-11-06.
+qwen3.6:35b-a3b                  a7eb95c53bcf96b4bdd008d0fab4a5dac88047d9c1a7a9ab88ed453423fbd87c  22621314161
+# The search for the best local model for this job, on this server: small
+# enough for 27 GiB, with tool calling in Ollama. Read on 2026-11-06.
+# Mixtures of experts: OpenAI's gpt-oss, Google's Gemma 4 (with a vision
+# projector and a draft model), Alibaba's Qwen3-Coder. All Apache 2.0.
+gpt-oss:20b                      f38aa0c53da5f8c49d08c43a99df24ff53167fe68e24664a7777288e7656fdfe  13793441427
+gemma4:26b                       001e5dafc3c77684c2307ebc6ab8e336e10c9b18eca52acf547d72fc83c3ca8c  18731025387
+qwen3-coder:30b                  06c1097efce0431c2045fe7b2e5108366e43bee1b4603a7aded8f21689e90bca  18556700222
+# And one dense model, for its speed on this CPU (every token reads all of
+# its parameters): Alibaba's Qwen3.8-27B, Apache 2.0, with a projector.
+qwen3.8:27b                      aaee06c39dcf2437cde036998d960e1fc1494b8191be7cc9657d01e509097813  17741871939

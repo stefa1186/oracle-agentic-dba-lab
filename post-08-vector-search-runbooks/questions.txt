@@ -1,0 +1,23 @@
+# The incident questions the agent answers, with and without the runbooks.
+# Q | <id> | <the runbook that should be found> | <the question, as a colleague would ask it>
+# MARK | <id> | <a phrase only OUR runbook would give, case-insensitive>
+# The questions avoid the runbooks' own words on purpose: the search has to
+# find them by meaning, not by keyword.
+
+Q | fra | archive_destination_full | It's 3am and the recovery area on PRODDB1 is at 96% and still climbing. What should I do?
+MARK | fra | arch_backup.sh
+MARK | fra | #dba-oncall
+MARK | fra | 20%
+MARK | fra | P2
+
+Q | billing | blocking_sessions | Users say the billing application has been frozen since 02:30. I see lots of sessions waiting on a TX enqueue. What do I do?
+MARK | billing | blockers.sql
+MARK | billing | APP_BATCH
+MARK | billing | #app-billing
+MARK | billing | 04:00
+
+Q | ora4031 | shared_pool_ora4031 | At 10am the order entry screens started throwing ORA-04031 errors. Should I flush the shared pool?
+MARK | ora4031 | sga_snapshot.sh
+MARK | ora4031 | business hours
+MARK | ora4031 | literals
+MARK | ora4031 | change ticket

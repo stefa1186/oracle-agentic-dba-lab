@@ -1,0 +1,22 @@
+# The ONLY data dictionary views the agent may read (through role AI_AGENT_READ).
+# One SYS object per line, upper case. V$ views are granted through their
+# underlying SYS.V_$ views, as always.
+#
+# Everything else in the dictionary (DBA_USERS, DBA_OBJECTS, V$SESSION, ...)
+# is invisible to the agent. Its own USER_* views and SESSION_PRIVS/ROLES
+# need no grant.
+#
+# To widen the agent's view, add a line here, commit, and rerun
+# ./01_least_privilege.sh. Every line is a decision you can point to.
+
+# What database and instance is this?
+V_$VERSION
+V_$INSTANCE
+V_$DATABASE
+
+# How is it configured and sized?
+V_$PARAMETER
+V_$SGAINFO
+
+# Is anything running out of space?
+DBA_TABLESPACE_USAGE_METRICS

@@ -1,0 +1,9 @@
+# Python packages for the agent harness. Installed into an isolated virtual
+# environment by setup_harness.sh, never into the system Python.
+#
+# mcp: official Model Context Protocol client, used to drive the SQLcl MCP server.
+mcp>=1.2,<2
+# openai: OpenAI-compatible API client, pointed at OpenRouter's endpoint.
+openai>=1.40,<3
+# python-dotenv: reads the harness .env file (like sourcing oraenv).
+python-dotenv>=1.0,<2

@@ -1,0 +1,26 @@
+# Models compared by run_matrix.sh. One model per line:
+#
+#   <provider> <model-id>
+#
+# provider is one of:
+#   openrouter   hosted models through OpenRouter (needs OPENROUTER_API_KEY)
+#   local        a model server on this machine (LOCAL_BASE_URL, Ollama by default)
+#
+# A line with only a model ID is treated as an openrouter model.
+# Lines starting with # and blank lines are ignored.
+#
+# Find current IDs with:
+#   .venv/bin/python run_agent.py --provider openrouter --list-models
+#   .venv/bin/python run_agent.py --provider local --list-models
+#
+# Tip: compare hosted and local models on the same test. Only local models
+# keep every byte of lab data on this server.
+#
+# Add your models below this line, for example:
+#   openrouter  <vendor>/<model>
+#   local       <model>:<size>
+openrouter nvidia/nemotron-3-ultra-550b-a55b:free
+# The same model on OpenRouter's paid endpoints (DeepInfra, BaseTen, Venice).
+# Used from 2026-11-05 evening, when the :free endpoint was down; each run's
+# events.jsonl names the provider that answered (provider_returned).
+# openrouter nvidia/nemotron-3-ultra-550b-a55b

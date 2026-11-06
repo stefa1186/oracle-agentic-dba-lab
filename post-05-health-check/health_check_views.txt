@@ -1,0 +1,40 @@
+# Views ADDED to the agent's role for the post 05 health check, on top of
+# post-03-least-privilege/granted_views.txt. Same format: one SYS object per
+# line, upper case; V$ views through their SYS.V_$ views.
+#
+# The rule for this list: the agent may see exactly what my own checklist
+# (dba_checklist.sql) reads, no more, so the comparison is fair. No AWR or
+# ASH views: on Enterprise Edition those need the Diagnostics Pack.
+#
+# Applied by 01_prepare_agent.sh; removed by 99_cleanup.sh, which rebuilds the
+# role from the post 03 list alone.
+
+# Storage
+DBA_TABLESPACES
+DBA_DATA_FILES
+DBA_TEMP_FILES
+DBA_FREE_SPACE
+DBA_SEGMENTS
+V_$RECOVERY_FILE_DEST
+
+# Objects
+DBA_OBJECTS
+DBA_INDEXES
+
+# Optimizer statistics
+DBA_TAB_STATISTICS
+
+# Security
+DBA_USERS
+DBA_ROLE_PRIVS
+DBA_SYS_PRIVS
+DBA_USERS_WITH_DEFPWD
+
+# Backup and recovery
+V_$RMAN_BACKUP_JOB_DETAILS
+V_$LOG
+V_$LOGFILE
+V_$CONTROLFILE
+
+# Memory
+V_$PGASTAT

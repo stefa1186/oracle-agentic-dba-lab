@@ -1,0 +1,26 @@
+# =============================================================================
+# diag_views.txt: the extra views the agent may read in post 10, on top of
+# post 03's granted_views.txt. Format as there: one SYS object name per line.
+# 01_prepare_agent.sh grants them (through post 03's 01_least_privilege.sh,
+# EXTRA_VIEW_FILES); 99_cleanup.sh revokes them.
+#
+# Everything a DBA reads in the first 20 minutes of an incident, read-only,
+# without OS access. Note: trace files can contain SQL text and bind values
+# from any session; in production, that alone is a reason to think twice.
+# =============================================================================
+
+# The alert log, as rows (no OS access needed).
+V_$DIAG_ALERT_EXT
+# Trace files: which exist, and their content line by line.
+V_$DIAG_TRACE_FILE
+V_$DIAG_TRACE_FILE_CONTENTS
+# Sessions now: who waits, on what, behind whom.
+V_$SESSION
+# Locks now.
+V_$LOCK
+# Session history, one sample per second (Diagnostics Pack on EE; included in Free).
+V_$ACTIVE_SESSION_HISTORY
+# SQL text by SQL_ID.
+V_$SQL
+# Object names for the object numbers in V$SESSION and ASH.
+DBA_OBJECTS

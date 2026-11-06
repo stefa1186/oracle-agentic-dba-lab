@@ -1,0 +1,51 @@
+# ---------------------------------------------------------------------------
+# .gitignore for oracle-agentic-dba-lab
+# Purpose: keep secrets, generated files and local state out of the repository.
+# ---------------------------------------------------------------------------
+
+# The LinkedIn articles and posts live in a separate, private repository:
+# never commit them here.
+post-*/article.md
+post-*/post.txt
+
+# Local environment files hold passwords and host-specific settings.
+# Only the template (post-01-why-and-the-cage/env.example) is committed.
+.env
+*.env
+!*.env.example
+
+# Oracle wallets and credential stores must never be committed.
+wallet/
+*.sso
+*.p12
+cwallet.*
+ewallet.*
+
+# SQLcl saved connections can contain stored credentials.
+.dbtools/
+
+# Oracle Net configuration generated per host.
+tnsnames.ora
+sqlnet.ora
+
+# Generated reports and raw test output (summaries go in each post folder's results.md).
+*.html.out
+awr_*.html
+*.log
+*.trc
+output/
+
+# Container volumes and data files created by the lab.
+oradata/
+volumes/
+
+# Python virtual environment and caches of the agent harness.
+.venv/
+__pycache__/
+*.pyc
+
+# Editor and OS clutter.
+.vscode/
+.idea/
+*.swp
+.DS_Store
