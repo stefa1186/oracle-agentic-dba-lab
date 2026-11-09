@@ -1,7 +1,7 @@
 -- =============================================================================
 -- setup_schema.sql  (run by 02_setup.sh, as SYSDBA)
 --
--- The application user &rag_schema: it owns the runbook table and the
+-- The application user &rag_schema: it owns the team note table and the
 -- embedding model, and needs exactly the privileges for that:
 --   CREATE SESSION, CREATE TABLE, CREATE MINING MODEL (an ONNX model is a
 --   mining model in the dictionary), READ on the directory holding the model file.

@@ -20,8 +20,8 @@ The two tests reuse earlier prompts unchanged:
 - **Test A, with tools:** post 02's first-session prompt (four questions the
   agent answers by querying the database). Scored against an answer key read
   from the database itself.
-- **Test B, no tools:** post 08's three runbook questions, without and with
-  the runbook excerpts that AI Vector Search found. Scored by post 08's own
+- **Test B, no tools:** post 08's three team note questions, without and with
+  the team note excerpts that AI Vector Search found. Scored by post 08's own
   scorer. With a local model, this whole pipeline is offline: the embeddings
   are computed in the database (post 08), the answer on the server.
 
@@ -39,7 +39,7 @@ only in the isolated lab.
 | Script | As | Network | Purpose |
 |---|---|---|---|
 | `01_check_hardware.sh` | oralab | any | CPU, GPU, memory, disk; does each model fit? |
-| `02_prepare_online.sh` | oralab | online | The pins checked on the registry before any download, Ollama (pinned), the models (checked again against `model_pins.txt`), a tool-calling check, the agent's account (post 03 role, firewall in observe mode), post 08's runbooks rebuilt, test A's answer key |
+| `02_prepare_online.sh` | oralab | online | The pins checked on the registry before any download, Ollama (pinned), the models (checked again against `model_pins.txt`), a tool-calling check, the agent's account (post 03 role, firewall in observe mode), post 08's team notes rebuilt, test A's answer key |
 | `03_cloud_baseline.sh` | oralab | online | Both tests with the cloud model |
 | `../post-01-why-and-the-cage/00_root_setup.sh --offline` | **root** | | The lab user goes offline: loopback only |
 | `04_prove_offline.sh` | oralab | offline | The policy, three internet tests (must fail), the database and the models (must work: each model answers a fixed request, with its writing speed), the drop counter |
@@ -107,7 +107,7 @@ the real output is in the article. Found and fixed on the way:
 
 Results, one run per model and test: in test A (7 facts), the cloud model 7,
 the 4B 2, the 30B no answer (30-minute timeout at step 8); in test B with the
-runbooks (12 markers), 11, 8 and 10. Zero packets dropped during the local
+team notes (12 markers), 11, 8 and 10. Zero packets dropped during the local
 runs.
 
 Then one more local model, of another family in the same size class:
@@ -140,7 +140,7 @@ Results: the dense Qwen3.8-27B wrote 2.8 tokens/s in 04's probe, against
 12 for the mixtures of experts: not run further. Test A (7 facts): Google's
 Gemma 4 26B 7, Alibaba's Qwen3-Coder 30B 7 by the scorer but 6 by reading
 (it excluded PDBADMIN as Oracle's; the scorer found the word inside its
-`NOT IN` list), OpenAI's gpt-oss 20B 5 (wrong PDB). Test B with the runbooks
+`NOT IN` list), OpenAI's gpt-oss 20B 5 (wrong PDB). Test B with the team notes
 (12 markers): 11, 10, 10. Both tests: 16, 34 and 25 minutes. Zero packets
 dropped. The best local model for this job, on this server: **Gemma 4 26B**,
 with the cloud model's scores (7 and 11) in 16 minutes instead of 4.5.

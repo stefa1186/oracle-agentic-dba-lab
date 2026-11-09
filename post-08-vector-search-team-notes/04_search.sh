@@ -2,7 +2,7 @@
 # =============================================================================
 # 04_search.sh
 #
-# AI Vector Search over the runbooks, in plain SQL, as RAG_LAB:
+# AI Vector Search over the team notes, in plain SQL, as RAG_LAB:
 #   the question becomes a vector (VECTOR_EMBEDDING, the same model as the
 #   chunks), and the TOP_K chunks with the smallest cosine distance to it
 #   are the answer.
@@ -11,7 +11,7 @@
 #                                     per question <id>, the two files the agent gets:
 #                                       question_<id>.txt   the question only
 #                                       context_<id>.txt    the question + the TOP_K chunks
-#                                     and retrieval.txt: was the expected runbook found?
+#                                     and retrieval.txt: was the expected team note found?
 #   ./04_search.sh "any question"     just the search, printed
 #
 # Run as the lab user. Read-only.
@@ -31,7 +31,7 @@ require_lab_user
 require_database
 
 # The TOP_K chunks closest to a question, one line each:
-#   #HIT#|rank|runbook|section|distance|chunk text
+#   #HIT#|rank|team note|section|distance|chunk text
 search() {
     local question="$1"
     # The question goes into a q-quoted literal: it must not contain "~'".
@@ -43,17 +43,17 @@ set heading off pagesize 0 linesize 4000 trimspool on tab off define on
 variable q varchar2(4000)
 exec :q := q'~${question}~'
 -- The question's vector, computed once, compared with every chunk's.
-select '#HIT#|' || rownum || '|' || runbook || '|' || section || '|' || to_char(dist, 'fm0.0000') || '|' || chunk_text
-from  (select runbook, section, chunk_text,
+select '#HIT#|' || rownum || '|' || team_note || '|' || section || '|' || to_char(dist, 'fm0.0000') || '|' || chunk_text
+from  (select team_note, section, chunk_text,
               vector_distance(embedding, vector_embedding(&model_name using :q as data), cosine) dist
-       from   runbook_chunks
+       from   team_note_chunks
        order  by dist
        fetch  first &top_k rows only);
 exit
 SQL
 }
 
-# Show hits readably: rank, distance, runbook, section.
+# Show hits readably: rank, distance, team note, section.
 show_hits() {
     awk -F'|' '$1 == "#HIT#" { printf "    %s. %s  %-26s %s\n", $2, $5, $3, $4 }'
 }
@@ -63,7 +63,7 @@ if [[ $# -gt 0 ]]; then
     step "Search: $1"
     if ! hits="$(search "$1")"; then
         echo "${hits}" | tail -10 >&2
-        die "the search failed: did ./03_load_runbooks.sh complete?"
+        die "the search failed: did ./03_load_team_notes.sh complete?"
     fi
     show_hits <<< "${hits}"
     exit 0
@@ -78,12 +78,12 @@ for id in $(question_ids); do
     # A failed search (no table yet, no model) shows the Oracle error, not silence.
     if ! hits="$(search "${question}")"; then
         echo "${hits}" | tail -10 >&2
-        die "the search failed: did ./03_load_runbooks.sh complete?"
+        die "the search failed: did ./03_load_team_notes.sh complete?"
     fi
     grep -q '^#HIT#' <<< "${hits}" || { echo "${hits}" >&2; die "the search returned nothing."; }
     show_hits <<< "${hits}"
 
-    # Was the runbook that answers it found, and at which rank?
+    # Was the team note that answers it found, and at which rank?
     rank="$(awk -F'|' -v e="${expected}" '$1 == "#HIT#" && $3 == e { print $2; exit }' <<< "${hits}")"
     if [[ "${rank}" == "1" ]]; then
         verdict="found first"
@@ -92,18 +92,18 @@ for id in $(question_ids); do
     else
         verdict="NOT in the top ${TOP_K}"
     fi
-    info "Expected runbook ${expected}: ${verdict}."
+    info "Expected team note ${expected}: ${verdict}."
     echo "${id} | expected ${expected} | ${verdict}" >> "${retrieval}"
 
-    # The two files the agent gets: without and with the runbooks.
+    # The two files the agent gets: without and with the team notes.
     printf '=== Incident question\n%s\n' "${question}" > "${POST08_OUT}/question_${id}.txt"
     {
         printf '=== Incident question\n%s\n\n' "${question}"
-        printf "=== Excerpts from our team's runbooks: the %s closest to the question (AI Vector Search, cosine distance)\n" "${TOP_K}"
+        printf "=== Excerpts from our team's team notes: the %s closest to the question (AI Vector Search, cosine distance)\n" "${TOP_K}"
         awk -F'|' '$1 == "#HIT#" {
             # The chunk text is everything after the fifth "|" (it may contain "|").
             text = $0; for (i = 1; i <= 5; i++) sub(/^[^|]*\|/, "", text)
-            printf "\n[%s] runbook: %s, section: %s (distance %s)\n%s\n", $2, $3, $4, $5, text
+            printf "\n[%s] team note: %s, section: %s (distance %s)\n%s\n", $2, $3, $4, $5, text
         }' <<< "${hits}"
     } > "${POST08_OUT}/context_${id}.txt"
 done

@@ -18,16 +18,16 @@ source "${POST12_DIR}/../post-04-auditing-the-agent/lib.sh"
 HARNESS_DIR="$(cd "${POST12_DIR}/../agent-harness" && pwd)"
 OLLAMA_DIR="${HARNESS_DIR}/local-models"
 
-# Post 08's folder (runbooks, questions, search) and its evidence folder,
+# Post 08's folder (team notes, questions, search) and its evidence folder,
 # where its 04_search.sh writes the files the agent gets in test B.
-POST08_DIR="$(cd "${POST12_DIR}/../post-08-vector-search-runbooks" && pwd)"
-POST08_OUT="${OUTPUT_DIR}/post-08-vector-search-runbooks"
+POST08_DIR="$(cd "${POST12_DIR}/../post-08-vector-search-team-notes" && pwd)"
+POST08_OUT="${OUTPUT_DIR}/post-08-vector-search-team-notes"
 
 # The two tests, with prompts reused UNCHANGED from earlier posts:
 #   test A: post 02's first-session prompt (the agent queries the database)
-#   test B: post 08's runbook questions (no tools: question + runbook excerpts)
+#   test B: post 08's team note questions (no tools: question + team note excerpts)
 INVENTORY_PROMPT="$(cd "${POST12_DIR}/../post-02-plugging-in-mcp" && pwd)/05_prompt.md"
-RUNBOOK_PROMPT="${POST08_DIR}/05_prompt.md"
+TEAM_NOTES_PROMPT="${POST08_DIR}/05_prompt.md"
 
 # Where this post keeps its evidence. The harness files this post's runs here
 # too (run_matrix.sh -o), like any post's: <timestamp>/<model>/run-N. The two
@@ -197,7 +197,7 @@ FAILED_RUNS=0
 # Run BOTH tests for ONE model, through the harness's matrix:
 #   test A: post 02's prompt, with tools (one run)
 #   test B: post 08's prompt, no tools, once per question, without and with
-#           the runbook excerpts (six runs)
+#           the team note excerpts (six runs)
 # The same limits for every model (TEST_* settings), passed through the
 # environment, so only the model changes. Two settings differ by where the
 # model runs: retries after a temporary error (local: TEST_LOCAL_MODEL_RETRIES;
@@ -233,9 +233,9 @@ run_tests() {
         for kind in question context; do
             file="${POST08_OUT}/${kind}_${id}.txt"
             [[ -f "${file}" ]] || die "no ${file}: run ./02_prepare_online.sh first."
-            step "Test B, ${model}: question '${id}', $( [[ "${kind}" == question ]] && echo 'WITHOUT' || echo 'WITH') runbooks"
+            step "Test B, ${model}: question '${id}', $( [[ "${kind}" == question ]] && echo 'WITHOUT' || echo 'WITH') team notes"
             ( cd "${HARNESS_DIR}" && env "${settings[@]}" \
-                  ./run_matrix.sh -m "${models_file}" -o "${OUTPUT_GROUP}" "${RUNBOOK_PROMPT}" \
+                  ./run_matrix.sh -m "${models_file}" -o "${OUTPUT_GROUP}" "${TEAM_NOTES_PROMPT}" \
                       -- --attach "${file}" --allow-tools NONE ) \
                 || failed_run "Test B, ${model}, question '${id}' (${kind})"
         done

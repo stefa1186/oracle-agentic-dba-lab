@@ -3,7 +3,7 @@
 # 99_cleanup.sh
 #
 # Returns the lab to its post 04 state:
-#   1. post 08's runbook schema (RAG_LAB, its model and table), with post
+#   1. post 08's team note schema (RAG_LAB, its model and table), with post
 #      08's own cleanup
 #   2. the agent's role back to post 03, SQL Firewall back to enforcing
 #   3. the local model server's container removed. The downloaded models are
@@ -47,7 +47,7 @@ if (( ! yes )); then
     [[ "${answer}" == "cleanup" ]] || die "not confirmed; nothing was changed."
 fi
 
-step "1/4 Post 08's runbook schema"
+step "1/4 Post 08's team note schema"
 "${POST08_DIR}/99_cleanup.sh" --yes
 
 step "2/4 The agent's role back to post 03, SQL Firewall back to enforcing"

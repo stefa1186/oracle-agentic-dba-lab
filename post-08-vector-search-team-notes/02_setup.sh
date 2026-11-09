@@ -77,4 +77,4 @@ grep -q MODEL_READY <<< "${output}" || { echo "${output}" >&2; die "unexpected o
 grep -E '^(MODEL|VECTOR) ' <<< "${output}" | sed 's/^/    /'
 
 step "Done"
-info "Next: ./03_load_runbooks.sh"
+info "Next: ./03_load_team_notes.sh"

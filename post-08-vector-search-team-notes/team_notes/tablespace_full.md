@@ -1,4 +1,4 @@
-# Runbook: tablespace full
+# Team note: tablespace full
 
 Team: DBA operations. Invented for the oracle-agentic-dba-lab; not a real company's procedure.
 

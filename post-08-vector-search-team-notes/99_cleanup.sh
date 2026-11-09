@@ -3,7 +3,7 @@
 # 99_cleanup.sh
 #
 # Removes post 08 from the database: the application user RAG_LAB (with it the
-# embedding model and the runbook table), the directory object, the model file
+# embedding model and the team note table), the directory object, the model file
 # inside the container, and the password file. The agent's account was never
 # changed. Kept: the downloaded model on the server (MODEL_DIR, so a rerun
 # needn't download it again), the search results, the runs, the scorecard.
@@ -28,7 +28,7 @@ require_database
 # Confirmation, unless --yes.
 case "${1:-}" in
     --yes) ;;
-    "")    read -r -p "This drops ${RAG_SCHEMA} (model and runbook table) and the directory. Type 'cleanup' to confirm: " answer
+    "")    read -r -p "This drops ${RAG_SCHEMA} (model and team note table) and the directory. Type 'cleanup' to confirm: " answer
            [[ "${answer}" == "cleanup" ]] || die "not confirmed; nothing was changed." ;;
     *)     die "usage: $0 [--yes]" ;;
 esac

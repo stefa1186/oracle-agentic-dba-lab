@@ -1,4 +1,4 @@
-# Runbook: Data Guard standby lag
+# Team note: Data Guard standby lag
 
 Team: DBA operations. Invented for the oracle-agentic-dba-lab; not a real company's procedure.
 

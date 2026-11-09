@@ -1,4 +1,4 @@
-# Runbook: archive destination or fast recovery area filling up
+# Team note: archive destination or fast recovery area filling up
 
 Team: DBA operations. Invented for the oracle-agentic-dba-lab; not a real company's procedure.
 

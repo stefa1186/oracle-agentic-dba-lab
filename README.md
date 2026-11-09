@@ -23,7 +23,7 @@ and run that post's test case, plus a README explaining the order to run them.
 | `post-05-health-check/` | Agent health check vs. a DBA checklist | 03 |
 | `post-06-awr/` | Agent reads an AWR report | 03 |
 | `post-07-sql-tuning/` | Agent vs. SQL Tuning Advisor | 03 |
-| `post-08-vector-search-runbooks/` | Runbooks in AI Vector Search | 03 |
+| `post-08-vector-search-team-notes/` | Team notes in AI Vector Search | 03 |
 | `post-09-breaking-it/` | Destructive requests and prompt injection | 03, 04 |
 | `post-10-alert-log-rca/` | Alert log triage with human approval | 03 |
 | `post-11-verdict/` | Every model-free guardrail rerun in one command, every agent run in one table, the verdict | all |

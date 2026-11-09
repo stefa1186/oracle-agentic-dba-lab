@@ -3,10 +3,10 @@
 # 06_run_agent.sh
 #
 # Runs the agent on every question twice, through the harness's matrix:
-#   without runbooks:  question_<id>.txt attached (the question only)
-#   with runbooks:     context_<id>.txt attached (question + the TOP_K chunks)
+#   without team notes:  question_<id>.txt attached (the question only)
+#   with team notes:     context_<id>.txt attached (question + the TOP_K chunks)
 # Same prompt (05_prompt.md), no tools: the only difference between the two
-# runs of a question is the runbook excerpts.
+# runs of a question is the team note excerpts.
 #
 #   ./06_run_agent.sh              every question, with and without, 1 run each
 #   ./06_run_agent.sh -r 3         ... 3 runs each
@@ -31,7 +31,7 @@ for id in $(question_ids); do
     for kind in question context; do
         file="${POST08_OUT}/${kind}_${id}.txt"
         [[ -f "${file}" ]] || die "no ${file}: run ./04_search.sh first."
-        step "Question '${id}', $( [[ "${kind}" == question ]] && echo 'WITHOUT' || echo 'WITH') runbooks"
+        step "Question '${id}', $( [[ "${kind}" == question ]] && echo 'WITHOUT' || echo 'WITH') team notes"
         # The harness from its own folder, as everywhere in the lab.
         ( cd "${harness}" && ./run_matrix.sh "$@" "${POST08_DIR}/05_prompt.md" -- --attach "${file}" --allow-tools NONE )
     done

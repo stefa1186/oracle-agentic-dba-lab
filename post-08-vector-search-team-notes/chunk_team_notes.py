@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 # =============================================================================
-# chunk_runbooks.py  (run by 03_load_runbooks.sh)
+# chunk_team_notes.py  (run by 03_load_team_notes.sh)
 #
-# Splits every runbook (runbooks/*.md) into chunks, one per "## " section,
-# and prints the SQL that loads them into RUNBOOK_CHUNKS. Each chunk is one
-# line and starts with its runbook's title and section, so it still makes
-# sense on its own: the search returns chunks, not whole runbooks.
+# Splits every team note (team_notes/*.md) into chunks, one per "## " section,
+# and prints the SQL that loads them into TEAM_NOTE_CHUNKS. Each chunk is one
+# line and starts with its team note's title and section, so it still makes
+# sense on its own: the search returns chunks, not whole team notes.
 #
 # Deterministic: files in name order, sections in file order, no randomness.
 # Plain Python, no extra packages. Changes nothing itself.
 # =============================================================================
 
-# argparse: options. pathlib: the runbook files. sys: exit codes.
+# argparse: options. pathlib: the team note files. sys: exit codes.
 import argparse
 import pathlib
 import sys
@@ -32,9 +32,9 @@ def q_literal(text: str) -> str:
 
 
 def chunks(path: pathlib.Path) -> list[tuple[str, str]]:
-    """(section heading, chunk text) for each '## ' section of one runbook."""
+    """(section heading, chunk text) for each '## ' section of one team note."""
     lines = path.read_text(encoding="utf-8").splitlines()
-    # The runbook's title: its first "# " line.
+    # The team note's title: its first "# " line.
     title = next((l[2:].strip() for l in lines if l.startswith("# ")), path.stem)
     out, heading, body = [], None, []
     for line in lines + ["## "]:
@@ -55,26 +55,26 @@ def chunks(path: pathlib.Path) -> list[tuple[str, str]]:
 
 
 def main() -> int:
-    """Print the INSERT statements for every chunk of every runbook."""
-    p = argparse.ArgumentParser(description="Chunk the runbooks and print the SQL that loads them.")
-    p.add_argument("runbooks_dir")
+    """Print the INSERT statements for every chunk of every team note."""
+    p = argparse.ArgumentParser(description="Chunk the team notes and print the SQL that loads them.")
+    p.add_argument("team_notes_dir")
     args = p.parse_args()
-    files = sorted(pathlib.Path(args.runbooks_dir).glob("*.md"))
+    files = sorted(pathlib.Path(args.team_notes_dir).glob("*.md"))
     if not files:
-        sys.exit(f"ERROR: no runbooks in {args.runbooks_dir}")
+        sys.exit(f"ERROR: no team notes in {args.team_notes_dir}")
     n = 0
     for f in files:
         for heading, text in chunks(f):
             # The chunk's id: its position, 1, 2, 3... (files in name order,
             # sections in file order), so it's the same on every load.
             n += 1
-            line = (f"insert into runbook_chunks (id, runbook, section, chunk_text) values "
+            line = (f"insert into team_note_chunks (id, team_note, section, chunk_text) values "
                     f"({n}, {q_literal(f.stem)}, {q_literal(heading)}, {q_literal(text)});")
             # SQL*Plus refuses input lines over 2,499 characters (SP2-0027).
             if len(line) > 2400:
                 sys.exit(f"ERROR: {f.name}, section '{heading}': too long for one SQL*Plus line; split the section")
             print(line)
-    print(f"prompt CHUNKS={n} RUNBOOKS={len(files)}")
+    print(f"prompt CHUNKS={n} TEAM_NOTES={len(files)}")
     return 0
 
 

@@ -15,7 +15,7 @@
 #   5. the agent's account in its post 12 state: post 03's role, SQL
 #      Firewall in OBSERVE mode (other models write other SQL: the firewall
 #      logs it instead of blocking it), auditing checked
-#   6. post 08's runbooks, rebuilt with post 08's own scripts: its embedding
+#   6. post 08's team notes, rebuilt with post 08's own scripts: its embedding
 #      model (downloaded once), the table, the vectors, and the search that
 #      writes the files test B attaches
 #   7. test A's answer key, from the database itself (as SYSDBA)
@@ -116,12 +116,12 @@ SQL
 [[ "${enabled}" == "1" ]] || die "audit policy ${AUDIT_POLICY} is not enabled for ${AGENT_DB_USER}: run ../post-04-auditing-the-agent/01_audit_policy.sh first."
 info "Audit policy ${AUDIT_POLICY} is enabled for ${AGENT_DB_USER}."
 
-step "6/7 Post 08's runbooks, rebuilt with post 08's scripts"
+step "6/7 Post 08's team notes, rebuilt with post 08's scripts"
 # The embedding model (downloaded once, checksum verified), the schema, the
 # table and its vectors, then the search that writes test B's files.
 "${POST08_DIR}/01_get_model.sh"
 "${POST08_DIR}/02_setup.sh"
-"${POST08_DIR}/03_load_runbooks.sh"
+"${POST08_DIR}/03_load_team_notes.sh"
 "${POST08_DIR}/04_search.sh"
 
 step "7/7 Test A's answer key, from the database"

@@ -3,8 +3,8 @@
 # 07_score.sh
 #
 # Scores every post 08 agent run (score_answers.py): with and without the
-# runbooks, how many of OUR runbooks' markers the answer contains, and which
-# team-specific details it named that no runbook has. Writes scorecard.md and
+# team notes, how many of OUR team notes' markers the answer contains, and which
+# team-specific details it named that no team note has. Writes scorecard.md and
 # prints it; then, with --answers, every answer in full.
 #
 #   ./07_score.sh               the scorecard
@@ -33,7 +33,7 @@ step "Retrieval (from ./04_search.sh)"
 
 step "Answers (${#runs[@]} runs)"
 python3 "${POST08_DIR}/score_answers.py" --runs "${runs[@]}" \
-    --questions "${QUESTIONS}" --runbooks "${RUNBOOKS_DIR}" > "${POST08_OUT}/scorecard.md"
+    --questions "${QUESTIONS}" --team-notes "${TEAM_NOTES_DIR}" > "${POST08_OUT}/scorecard.md"
 cat "${POST08_OUT}/scorecard.md"
 
 if [[ "${1:-}" == "--answers" ]]; then

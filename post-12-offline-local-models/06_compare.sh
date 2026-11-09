@@ -38,7 +38,7 @@ esac
 # The newest run of each model (test A: post 02's prompt), and of each model
 # and attached file (test B: post 08's prompt).
 mapfile -t runs_a < <(python3 "${POST12_DIR}/compare.py" select "${POST12_OUT}" "$(basename "$(dirname "${INVENTORY_PROMPT}")")")
-mapfile -t runs_b < <(python3 "${POST12_DIR}/compare.py" select "${POST12_OUT}" "$(basename "$(dirname "${RUNBOOK_PROMPT}")")")
+mapfile -t runs_b < <(python3 "${POST12_DIR}/compare.py" select "${POST12_OUT}" "$(basename "$(dirname "${TEAM_NOTES_PROMPT}")")")
 (( ${#runs_a[@]} > 0 )) || die "no test A runs yet: ./03_cloud_baseline.sh, ./05_run_local.sh"
 
 # Test A's statements outside the allow-list: from the firewall's log, in
@@ -56,13 +56,13 @@ report="${POST12_OUT}/comparison.md"
     echo
     python3 "${POST12_DIR}/compare.py" inventory "${ANSWER_KEY}" "${runs_a[@]}"
     echo
-    echo "## Test B: post 08's runbook questions (no tools)"
+    echo "## Test B: post 08's team note questions (no tools)"
     echo
     if (( ${#runs_b[@]} > 0 )); then
         # Post 08's scorer, with one more column: the model. Its heading is
         # dropped (this file has its own).
         python3 "${POST08_DIR}/score_answers.py" --by-model --runs "${runs_b[@]}" \
-            --questions "${POST08_DIR}/questions.txt" --runbooks "${POST08_DIR}/runbooks" | sed '1,2d'
+            --questions "${POST08_DIR}/questions.txt" --team-notes "${POST08_DIR}/team_notes" | sed '1,2d'
     else
         echo "(no test B runs yet)"
     fi

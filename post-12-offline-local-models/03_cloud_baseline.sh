@@ -6,7 +6,7 @@
 # both tests, in the same lab state and with the same limits as the local
 # models will get, so only the model changes:
 #   test A  post 02's first-session prompt, with tools          (1 run)
-#   test B  post 08's runbook questions, without and with runbooks (6 runs)
+#   test B  post 08's team note questions, without and with team notes (6 runs)
 #
 # Run as the lab user, after ./02_prepare_online.sh, while still ONLINE
 # (OpenRouter is on the internet). Needs OPENROUTER_API_KEY in

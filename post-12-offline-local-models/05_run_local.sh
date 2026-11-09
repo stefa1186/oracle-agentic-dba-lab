@@ -4,7 +4,7 @@
 #
 # The same two tests as the cloud baseline, with each local model, OFFLINE:
 #   test A  post 02's first-session prompt, with tools          (1 run)
-#   test B  post 08's runbook questions, without and with runbooks (6 runs)
+#   test B  post 08's team note questions, without and with team notes (6 runs)
 # Same prompts, same lab state, same limits (TEST_* settings): only the
 # model, and where it runs, change. Two settings follow where the model runs
 # (env.example): no retries after a temporary error, and thinking switched

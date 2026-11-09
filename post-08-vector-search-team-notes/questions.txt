@@ -1,7 +1,7 @@
-# The incident questions the agent answers, with and without the runbooks.
-# Q | <id> | <the runbook that should be found> | <the question, as a colleague would ask it>
-# MARK | <id> | <a phrase only OUR runbook would give, case-insensitive>
-# The questions avoid the runbooks' own words on purpose: the search has to
+# The incident questions the agent answers, with and without the team notes.
+# Q | <id> | <the team note that should be found> | <the question, as a colleague would ask it>
+# MARK | <id> | <a phrase only OUR team note would give, case-insensitive>
+# The questions avoid the team notes' own words on purpose: the search has to
 # find them by meaning, not by keyword.
 
 Q | fra | archive_destination_full | It's 3am and the recovery area on PRODDB1 is at 96% and still climbing. What should I do?

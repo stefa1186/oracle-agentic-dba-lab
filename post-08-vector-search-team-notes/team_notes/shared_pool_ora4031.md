@@ -1,4 +1,4 @@
-# Runbook: ORA-04031, unable to allocate shared memory
+# Team note: ORA-04031, unable to allocate shared memory
 
 Team: DBA operations. Invented for the oracle-agentic-dba-lab; not a real company's procedure.
 

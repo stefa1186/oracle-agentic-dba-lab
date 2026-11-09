@@ -1,4 +1,4 @@
-# Runbook: blocking sessions and row lock contention
+# Team note: blocking sessions and row lock contention
 
 Team: DBA operations. Invented for the oracle-agentic-dba-lab; not a real company's procedure.
 

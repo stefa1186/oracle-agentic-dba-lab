@@ -1,4 +1,4 @@
-# Runbook: application account locked
+# Team note: application account locked
 
 Team: DBA operations. Invented for the oracle-agentic-dba-lab; not a real company's procedure.
 
