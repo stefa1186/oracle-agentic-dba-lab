@@ -9,6 +9,12 @@
 #   sudo ./00_root_setup.sh --offline  the same, but the lab user goes OFFLINE:
 #                                      loopback only, no DNS, no internet (post 12).
 #                                      Rerun without --offline to go back online.
+#   sudo ./00_root_setup.sh --download-window [minutes]
+#                                      opens a download window for later posts:
+#                                      the lab user may also use HTTPS to any
+#                                      internet host, for 30 minutes (or the
+#                                      minutes given). It closes by itself, at
+#                                      a reboot, or at the next plain run.
 #   sudo ./00_root_setup.sh --remove   undo everything this script did
 #
 # What it does (set up):
@@ -62,9 +68,37 @@ egress_mode="online"
 case "${1:-}" in
     "")        mode="setup" ;;
     --offline) mode="setup"; egress_mode="offline" ;;
+    --download-window) mode="window"; window_minutes="${2:-30}" ;;
     --remove)  mode="remove" ;;
-    *)         die "usage: $0 [--offline | --remove]" ;;
+    *)         die "usage: $0 [--offline | --download-window [minutes] | --remove]" ;;
 esac
+
+# Loads the current rule file plus a download window: HTTPS to any internet
+# host for the lab user (the LAN stays closed), until the file is loaded
+# again. Only from online mode.
+load_download_window() {
+    grep -q 'counter drop comment "lab user: mode online"' "${EGRESS_NFT_FILE}" || die "the lab user is not in online mode: no download window."
+    sed 's/^\( *\)counter drop comment "lab user: mode online"$/\1tcp dport 443 accept comment "download window"\n&/' "${EGRESS_NFT_FILE}" | nft -f -
+}
+
+# =============================================================================
+if [[ "${mode}" == "window" ]]; then
+# =============================================================================
+    # Whole minutes, at most a working day.
+    { [[ "${window_minutes}" =~ ^[0-9]+$ ]] && (( window_minutes >= 1 && window_minutes <= 480 )); } || die "minutes must be a number from 1 to 480."
+    # Only on a lab that is set up.
+    { lab_user_exists && lab_user_is_ours && [[ -f "${EGRESS_NFT_FILE}" ]]; } || die "the lab isn't set up: run $0 first."
+    # An earlier window's closing timer gives way to this one.
+    systemctl stop "${EGRESS_WINDOW_UNIT}.timer" 2>/dev/null || true
+    systemctl reset-failed "${EGRESS_WINDOW_UNIT}.timer" "${EGRESS_WINDOW_UNIT}.service" 2>/dev/null || true
+    # Open it.
+    load_download_window
+    # The closing: the real rule file again, after the given minutes.
+    systemd-run --quiet --unit="${EGRESS_WINDOW_UNIT}" --on-active="${window_minutes}min" /usr/sbin/nft -f "${EGRESS_NFT_FILE}"
+    warn "Download window OPEN for ${window_minutes} minutes: ${LAB_USER} may use HTTPS to any internet host."
+    info "It closes by itself, at a reboot, or when you run $0 without options."
+    exit 0
+fi
 
 # =============================================================================
 if [[ "${mode}" == "remove" ]]; then
@@ -100,6 +134,8 @@ if [[ "${mode}" == "remove" ]]; then
     info "${SUDOERS_FILE} removed."
 
     step "Removing the outbound network policy"
+    # No download window outlives the lab.
+    systemctl stop "${EGRESS_WINDOW_UNIT}.timer" 2>/dev/null || true
     # Stopping the unit deletes the nftables table; then disable it.
     systemctl disable --now --quiet "${EGRESS_UNIT}" 2>/dev/null || true
     # Delete the table directly too, in case the unit was already gone.
@@ -316,8 +352,10 @@ chmod 644 "/etc/systemd/system/${EGRESS_UNIT}"
 systemctl daemon-reload
 systemctl enable --quiet "${EGRESS_UNIT}"
 systemctl start "${EGRESS_UNIT}"
-# ... and load the current file now, so a rerun always applies the latest rules.
+# ... and load the current file now, so a rerun always applies the latest rules
+# (this also closes a download window: its closing timer isn't needed anymore).
 nft -f "${EGRESS_NFT_FILE}"
+systemctl stop "${EGRESS_WINDOW_UNIT}.timer" 2>/dev/null || true
 if [[ "${egress_mode}" == "online" ]]; then
     info "Policy active (online): loopback, DNS through this server's DNS servers, TCP ${EGRESS_ALLOWED_TCP_PORTS} to ${EGRESS_ALLOWED_HOSTS:-no host} only. Nothing on the LAN."
 else
@@ -365,8 +403,8 @@ else
     [[ "${egress_mode}" == "online" ]] || die "${LAB_USER} has no database image, and offline mode allows no download. Run $0 without --offline first."
     # Whatever happens from here, the real policy is loaded again at exit.
     trap 'nft -f "${EGRESS_NFT_FILE}"' EXIT
-    # The download window: HTTPS to any host, inserted before the final drop.
-    sed 's/^\( *\)counter drop comment "lab user: mode online"$/\1tcp dport 443 accept comment "download window"\n&/' "${EGRESS_NFT_FILE}" | nft -f -
+    # The download window: HTTPS to any host, until the real policy is loaded again.
+    load_download_window
     info "Pulling ${DB_IMAGE} as ${LAB_USER} (several GB, first time only)..."
     as_lab_user podman pull --quiet "${DB_IMAGE}" >/dev/null
     # Window closed: the real policy again.

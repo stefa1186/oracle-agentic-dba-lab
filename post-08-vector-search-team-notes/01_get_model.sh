@@ -30,6 +30,8 @@ mkdir -p "${MODEL_DIR}"
 step "The model zip"
 # Download only if there's no zip yet (rerunning never downloads twice).
 if [[ ! -s "${zip}" ]]; then
+    # The lab user reaches only the allowed hosts: a download needs root's window.
+    "$(dirname "${BASH_SOURCE[0]}")/../post-01-why-and-the-cage/require_download_window.sh"
     info "Downloading ${MODEL_URL}"
     # Into a temporary name first: an interrupted download never looks complete.
     curl -fL --retry 3 --connect-timeout 30 -o "${zip}.part" "${MODEL_URL}"

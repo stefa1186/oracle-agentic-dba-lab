@@ -21,6 +21,8 @@ EGRESS_TABLE="oralab_egress"
 EGRESS_NFT_FILE="/etc/oralab/egress.nft"
 # systemd unit that loads the policy at every boot.
 EGRESS_UNIT="oralab-egress.service"
+# Transient systemd timer that closes a download window (00_root_setup.sh --download-window).
+EGRESS_WINDOW_UNIT="oralab-egress-window-close"
 
 # -----------------------------------------------------------------------------
 # Logging

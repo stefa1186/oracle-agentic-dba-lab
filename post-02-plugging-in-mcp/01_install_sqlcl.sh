@@ -54,6 +54,8 @@ if [[ -f "${ZIP_FILE}" ]]; then
 else
     # Download to a temporary name and rename only when complete, so an
     # interrupted download never looks like a finished one.
+    # The lab user reaches only the allowed hosts: a download needs root's window.
+    "$(dirname "${BASH_SOURCE[0]}")/../post-01-why-and-the-cage/require_download_window.sh"
     info "Downloading ${SQLCL_URL}"
     curl -fL --retry 3 --output "${ZIP_FILE}.part" "${SQLCL_URL}"
     mv "${ZIP_FILE}.part" "${ZIP_FILE}"
