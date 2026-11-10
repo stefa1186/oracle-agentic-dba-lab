@@ -1,10 +1,14 @@
 # Post 01 – Why, and the cage
 
-Builds and destroys the isolated lab on a CentOS 10 server:
+Builds and destroys the isolated lab on a Linux server (tested on CentOS 10;
+other distributions need small changes, starting with the package manager).
+The server doesn't have to be dedicated, but nothing else of value should run on it:
 
 - a dedicated Linux user, **`oralab`**, with no password, owning everything in the lab
 - an outbound network policy for that user: loopback, DNS and HTTPS to the
-  internet only; nothing on the local network
+  internet only; nothing on the local network. HTTPS is open to any host, on
+  purpose: later posts download from many sites, and an allow list of HTTPS
+  addresses would grow with every post
 - Oracle AI Database 26ai Free in a rootless Podman container, with its
   listener on `127.0.0.1` only and the password passed as a Podman secret
 
