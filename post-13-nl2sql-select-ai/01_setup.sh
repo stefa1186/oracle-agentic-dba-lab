@@ -116,4 +116,4 @@ order by 1;
 SQL
 
 step "Done"
-info "Next: ./02_run_nl2sql.sh"
+info "Next: ./02_build_inputs.sh"

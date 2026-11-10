@@ -1,39 +1,26 @@
-"""nl2sql.py: the NL2SQL test, run by 02_run_nl2sql.sh (not on its own).
+"""grade.py: the database side of the NL2SQL test (the model side is the harness).
 
-For each model, metadata level (bare, comments), repetition and question:
-build one prompt from the data dictionary, ask the model for one SQL query
-(temperature 0), run it as the read-only user, and grade it against the
-reference with MINUS in both directions. Everything goes into one CSV.
+  python3 grade.py schema bare|comments   print the schema as the model sees it
+  python3 grade.py grade <runs folder>    grade every run's answer, write results.csv
+
+Runs as the lab user, called by 02_build_inputs.sh and 05_grade.sh. The SQL
+runs in the database container as the read-only user: SELECT on SH, nothing else.
 """
 
 import csv          # the results file
-import datetime     # the run folder's name
+import glob         # the harness's run folders
 import json         # the log of every answer
 import os           # settings from the environment
 import re           # cleaning the model's answer
 import subprocess   # SQL*Plus inside the database container
 import sys          # arguments, exit code
-import time         # how long each answer took
-
-from dotenv import dotenv_values  # reads the harness .env (the API key)
-from openai import OpenAI         # OpenAI-compatible client, pointed at OpenRouter
 
 # Settings from 02_run_nl2sql.sh.
 CONTAINER = os.environ["DB_CONTAINER"]
 RO_USER = os.environ["RO_USER"]
 RO_PASSWORD = open(os.environ["RO_PASSWORD_FILE"]).read().strip()
-MODELS = os.environ["MODELS"].split()
-REPEATS = int(os.environ["REPEATS"])
-OUT_DIR = os.environ["OUT_DIR"]
 # SH's 9 base tables: no Oracle Text index tables (DR$), no materialized views.
 TABLE_FILTER = "t.owner = 'SH' and t.table_name not like 'DR$%' and t.table_name not like '%\\_MV' escape '\\'"
-
-# The instructions, the same for every question and model.
-SYSTEM = ("You write Oracle SQL for Oracle AI Database 26ai. Answer the question with one "
-          "SELECT statement that uses only the tables below, each qualified with its owner, SH. "
-          "Return only the SQL: no explanation, no code fences, no final semicolon. "
-          "If the schema can't answer the question, return exactly: NO_ANSWER")
-
 
 def sqlplus(script):
     """Run SQL as the read-only user, in the container; return the output."""
@@ -122,49 +109,32 @@ select count(*) from (select * from ({reference}) minus select * from (
 
 
 def main():
-    # The questions: id | group | question | reference.
-    questions = [l.rstrip("\n").split("|", 3) for l in open(os.environ["QUESTIONS"])
-                 if l.strip() and not l.startswith("#")]
-    # Only some questions, if named on the command line.
-    if sys.argv[1:]:
-        questions = [q for q in questions if q[0] in sys.argv[1:]]
-    # The OpenRouter client, with the key from the harness .env.
-    key = dotenv_values(os.environ["HARNESS_ENV"]).get("OPENROUTER_API_KEY") or sys.exit("No OPENROUTER_API_KEY in agent-harness/.env.")
-    client = OpenAI(base_url="https://openrouter.ai/api/v1", api_key=key, timeout=300, max_retries=2)
-    # The run folder, named by the start time in UTC.
-    run = os.path.join(OUT_DIR, datetime.datetime.now(datetime.timezone.utc).strftime("run_%Y%m%dT%H%M%SZ"))
-    os.makedirs(run)
-    # The two schema texts, built once, and saved: this is what the model reads.
-    schemas = {m: schema_text(m == "comments") for m in ("bare", "comments")}
-    for m, text in schemas.items():
-        open(os.path.join(run, f"prompt_{m}.txt"), "w").write(SYSTEM + "\n\n" + text + "\n")
-    print(f"Run folder: {run}")
-    with open(os.path.join(run, "results.csv"), "w", newline="") as f, open(os.path.join(run, "answers.jsonl"), "w") as log:
+    # The questions: id -> (group, question, reference).
+    questions = {l.split("|", 3)[0]: l.rstrip("\n").split("|", 3)[1:] for l in open(os.environ["QUESTIONS"])
+                 if l.strip() and not l.startswith("#")}
+    if sys.argv[1] == "schema":
+        print(schema_text(sys.argv[2] == "comments"))
+        return
+    # grade: every run of the harness under the folder given.
+    runs = sorted(glob.glob(os.path.join(sys.argv[2], "**", "events.jsonl"), recursive=True))
+    out = os.path.join(sys.argv[2], "results.csv")
+    with open(out, "w", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["model", "metadata", "rep", "qid", "group", "outcome", "detail", "seconds", "tokens_in", "tokens_out", "sql"])
-        for model in MODELS:
-            for meta, schema in schemas.items():
-                for rep in range(1, REPEATS + 1):
-                    for qid, group, question, reference in questions:
-                        start = time.time()
-                        try:
-                            # One call: instructions, then schema and question.
-                            r = client.chat.completions.create(model=model, temperature=0, messages=[
-                                {"role": "system", "content": SYSTEM},
-                                {"role": "user", "content": f"{schema}\n\nQuestion: {question}"}])
-                            answer, usage = r.choices[0].message.content, r.usage
-                            sql = clean(answer)
-                            outcome, detail = grade(sql, reference.strip())
-                        except Exception as e:  # a failed call is a result too
-                            answer, usage, sql = "", None, ""
-                            outcome, detail = "ERROR", f"call failed: {type(e).__name__}"
-                        secs = round(time.time() - start, 1)
-                        tin, tout = (usage.prompt_tokens, usage.completion_tokens) if usage else ("", "")
-                        w.writerow([model, meta, rep, qid, group, outcome, detail, secs, tin, tout, sql])
-                        f.flush()
-                        log.write(json.dumps({"model": model, "metadata": meta, "rep": rep, "qid": qid, "answer": answer}) + "\n")
-                        print(f"  {model:40.40} {meta:8} rep {rep}  {qid}  {outcome:5}  {detail}", flush=True)
-    print(f"Results: {run}/results.csv. Next: ./03_report.sh")
+        w.writerow(["model", "metadata", "qid", "group", "outcome", "detail", "tokens_in", "tokens_out", "sql", "run"])
+        for path in runs:
+            ev = [json.loads(l) for l in open(path)]
+            start = next(e for e in ev if e.get("event") == "run_start")
+            end = next((e for e in ev if e.get("event") == "run_end"), {})
+            # The attached file names the setup: input_<metadata>_<question id>.txt.
+            name = os.path.basename(start["attached"][0]["file"])
+            meta, qid = re.match(r"input_(\w+?)_(\w+)\.txt", name).groups()
+            group, question, reference = questions[qid]
+            sql = clean(end.get("final_answer"))
+            outcome, detail = grade(sql, reference.strip()) if end else ("ERROR", "no answer")
+            w.writerow([start.get("model"), meta, qid, group, outcome, detail,
+                        end.get("prompt_tokens_total", ""), end.get("completion_tokens_total", ""), sql, os.path.dirname(path)])
+            print(f"  {start.get('model', ''):40.40} {meta:8} {qid}  {outcome:5}  {detail}", flush=True)
+    print(f"Results: {out}")
 
 
 if __name__ == "__main__":

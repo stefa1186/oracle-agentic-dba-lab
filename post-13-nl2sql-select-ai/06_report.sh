@@ -2,7 +2,7 @@
 # =============================================================================
 # 03_report.sh
 #
-# Summarises a run of 02_run_nl2sql.sh (the newest, or the folder given):
+# Summarises a graded set of runs (05_grade.sh), the newest or the folder given:
 # outcomes per model, metadata level and group; questions whose outcome
 # changed between repetitions; and every WRONG answer next to its reference.
 # Run as the lab user. Changes nothing.
@@ -18,8 +18,8 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 load_post13_config
 
 # The run: the folder given, or the newest one.
-run="${1:-$(ls -d "${OUT_DIR}"/run_* 2>/dev/null | tail -1)}"
-[[ -f "${run}/results.csv" ]] || die "no results.csv in '${run}'. Run ./02_run_nl2sql.sh first."
+run="${1:-$(ls -d "${OUT_DIR}"/set_* 2>/dev/null | tail -1)}"
+[[ -f "${run}/results.csv" ]] || die "no results.csv in '${run}'. Run ./04_run_agent.sh and ./05_grade.sh first."
 echo "Run: ${run}"
 # The summary itself, in Python (standard library only); -I: isolated mode.
 python3 -I - "${run}/results.csv" "${POST13_DIR}/questions.txt" <<'PY'
