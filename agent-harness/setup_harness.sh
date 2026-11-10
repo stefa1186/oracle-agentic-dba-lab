@@ -53,8 +53,6 @@ else
     echo "Reusing virtual environment in ${VENV_DIR}"
 fi
 
-# The lab user reaches only the allowed hosts: Python packages need root's window.
-"$(dirname "${BASH_SOURCE[0]}")/../post-01-why-and-the-cage/require_download_window.sh"
 # Upgrade pip inside the environment, quietly.
 "${VENV_DIR}/bin/python" -m pip install --quiet --upgrade pip
 # Install or update the harness dependencies to the versions allowed by requirements.txt.

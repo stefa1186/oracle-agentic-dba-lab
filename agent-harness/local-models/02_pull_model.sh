@@ -37,8 +37,6 @@ if [[ "$(podman inspect --format '{{.State.Status}}' "${OLLAMA_CONTAINER}" 2>/de
     exit 1
 fi
 
-# The lab user reaches only the allowed hosts: model downloads need root's window.
-"${SCRIPT_DIR}/../../post-01-why-and-the-cage/require_download_window.sh"
 # Pull every model given on the command line.
 for model in "$@"; do
     # Show which model is being pulled.

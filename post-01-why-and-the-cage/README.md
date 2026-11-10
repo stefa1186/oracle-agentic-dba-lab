@@ -21,8 +21,6 @@ actions, then everything is done as the software owner.
 | `00_root_setup.sh` | **root** | Packages, the `oralab` user, linger, outbound policy, sudoers entry, the database image (`oralab` can't download it), and a read-only copy of this repository for `oralab`. `--remove` undoes all of it. |
 | `env.example` | — | Settings with defaults. To change one, copy to `.env` and edit (`.env` is never committed). |
 | `lib.sh` | — | Helpers shared by the scripts (not run directly) |
-| `require_download_window.sh` | oralab | Run by later posts' download scripts: stops them, with the command to run, unless root has opened a download window |
-| `first_policy_rules.sh` | — | The first version's rules, a test fixture for `04_test_policy.sh` |
 | `01_prereqs.sh` | oralab | Checks the root setup, the tools and the resources. Changes nothing. |
 | `02_build.sh` | oralab | Password, network, datafile volume and database; waits until FREEPDB1 is open |
 | `03_verify.sh` | oralab | PASS/FAIL checks: database up, unreachable from outside, outbound limited |
@@ -145,11 +143,6 @@ GRANT ANY PRIVILEGE, the one grant that contains all the others.
   user to loopback only: no DNS, no internet, no LAN. The database and local
   models keep working. Rerun without `--offline` to go back online. The mode
   is whatever the last run wrote, and it survives a reboot.
-- **Downloads in later posts** (SQLcl, Python packages, models) go beyond
-  OpenRouter: `sudo ./00_root_setup.sh --download-window [minutes]` lets the
-  lab user use HTTPS to any host, for 30 minutes or the minutes given. The
-  download scripts check for it, and say so if it's closed. It closes by
-  itself, at a reboot, or at the next plain run.
 
 ## Working in the lab
 

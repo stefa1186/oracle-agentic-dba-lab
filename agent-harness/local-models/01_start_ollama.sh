@@ -100,8 +100,6 @@ else
     if [[ "${OLLAMA_GPU}" == "1" ]]; then
         opts+=(--device nvidia.com/gpu=all)
     fi
-    # Without the image, podman downloads it: that needs root's download window.
-    podman image exists "${OLLAMA_IMAGE}" || "${SCRIPT_DIR}/../../post-01-why-and-the-cage/require_download_window.sh"
     # Create and start the container.
     echo "Creating container ${OLLAMA_CONTAINER} from ${OLLAMA_IMAGE}."
     podman run "${opts[@]}" "${OLLAMA_IMAGE}" >/dev/null

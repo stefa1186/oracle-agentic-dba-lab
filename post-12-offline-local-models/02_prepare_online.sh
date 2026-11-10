@@ -34,8 +34,6 @@ source "$(dirname "${BASH_SOURCE[0]}")/lib.sh"
 load_post12_config
 # Must be the lab user.
 require_lab_user
-# The downloads (Ollama, the models) need root's download window.
-"$(dirname "${BASH_SOURCE[0]}")/../post-01-why-and-the-cage/require_download_window.sh"
 # The database must be up.
 require_database
 
