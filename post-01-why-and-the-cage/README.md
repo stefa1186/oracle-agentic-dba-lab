@@ -3,9 +3,8 @@
 Builds and destroys the isolated lab on a CentOS 10 server:
 
 - a dedicated Linux user, **`oralab`**, with no password, owning everything in the lab
-- an outbound network policy for that user: loopback, DNS through the
-  server's own DNS servers, and HTTPS to the internet; nothing on the local
-  network
+- an outbound network policy for that user: loopback, DNS and HTTPS to the
+  internet only; nothing on the local network
 - Oracle AI Database 26ai Free in a rootless Podman container, with its
   listener on `127.0.0.1` only and the password passed as a Podman secret
 
@@ -132,8 +131,7 @@ GRANT ANY PRIVILEGE, the one grant that contains all the others.
   pull the new `latest`, read its digest, update `DB_IMAGE` in
   `env.example`, commit, rerun `./02_build.sh`.
 - **Changing the outbound ports** is a root action: edit
-  `EGRESS_ALLOWED_TCP_PORTS` and rerun `sudo ./00_root_setup.sh`. The rerun
-  also reads the server's DNS servers again (`/etc/resolv.conf`).
+  `EGRESS_ALLOWED_TCP_PORTS` and rerun `sudo ./00_root_setup.sh`.
 - **Offline mode (post 12):** `sudo ./00_root_setup.sh --offline` cuts the lab
   user to loopback only: no DNS, no internet, no LAN. The database and local
   models keep working. Rerun without `--offline` to go back online. The mode
@@ -174,5 +172,4 @@ root included. Post 12 found it (its model downloads went over IPv6);
 `03_verify.sh` now tests HTTPS over IPv6 too, when the host has IPv6, and
 `04_test_policy.sh` tests the rules themselves, in a throwaway network: the
 current rules pass, the first version fails (run it with
-`first_policy_rules.sh`, the first version's rules kept in this folder, as
-argument).
+`<(git show 242c97a:post-01-why-and-the-cage/00_root_setup.sh)` as argument).

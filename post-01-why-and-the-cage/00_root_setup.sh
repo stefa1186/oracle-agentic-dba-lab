@@ -17,10 +17,9 @@
 #   3. enables "linger" so the lab user's containers keep running
 #   4. loads the outbound network policy for the lab user (root-owned, so
 #      the lab user can't loosen its own cage), and reloads it at boot.
-#      Normal mode: loopback, DNS through this server's DNS servers, and
-#      HTTPS to the internet. Offline mode (--offline): loopback only. The
-#      mode is whatever the LAST run of this script wrote, and it survives a
-#      reboot
+#      Normal mode: loopback, DNS and HTTPS. Offline mode (--offline):
+#      loopback only. The mode is whatever the LAST run of this script wrote,
+#      and it survives a reboot
 #   5. installs a minimal sudoers entry: two READ-ONLY commands used by
 #      03_verify.sh. Nothing that changes the system.
 #   6. gives the lab user this repository WITHOUT GitHub credentials: a
@@ -188,7 +187,7 @@ step "4/6 Outbound network policy for '${LAB_USER}'"
 # Rules for the lab user's packets, in order (normal mode):
 #   loopback               -> allowed (agent <-> database, local models)
 #   established replies    -> allowed
-#   DNS                    -> allowed, to this server's DNS servers only
+#   DNS                    -> allowed
 #   private / LAN networks -> dropped (no "database link" to the database next door)
 #   allowed TCP ports      -> allowed to the internet (default: 443 only)
 #   anything else          -> dropped and counted
@@ -201,35 +200,19 @@ step "4/6 Outbound network policy for '${LAB_USER}'"
 [[ "${EGRESS_ALLOWED_TCP_PORTS}" =~ ^[0-9]+( [0-9]+)*$ ]] || die "EGRESS_ALLOWED_TCP_PORTS must be port numbers separated by spaces."
 # Root-owned folder for the rule file.
 install -d -m 755 -o root -g root /etc/oralab
-# This server's DNS servers (/etc/resolv.conf), read now, by root: the lab
-# user may send DNS queries to them only. Only the generated rule file holds
-# their addresses. Each list is comma-separated, sorted, without duplicates,
-# and may be empty (a resolver on loopback is allowed anyway). Not needed
-# offline.
-dns4="" dns6=""
-if [[ "${egress_mode}" != "offline" ]]; then
-    # The DNS servers, except loopback ones.
-    servers="$(awk '/^nameserver/ {print $2}' /etc/resolv.conf | grep -vE '^(127\.|::1$)')" || true
-    dns4="$(grep -v ':' <<< "${servers}" | grep -v '^$' | sort -u | paste -sd, -)" || true
-    dns6="$(grep ':' <<< "${servers}" | sort -u | paste -sd, -)" || true
-fi
 # The rules after "replies", by mode. Each mode ends with a counted drop whose
 # comment names the mode, so "nft list table" shows which mode is active.
 if [[ "${egress_mode}" == "online" ]]; then
-    # One rule per address family, only for the lists that aren't empty.
-    ports="${EGRESS_ALLOWED_TCP_PORTS// /, }"
-    dns_rules=""
-    if [[ -n "${dns4}" ]]; then dns_rules+="        ip daddr { ${dns4} } meta l4proto { tcp, udp } th dport 53 accept"$'\n'; fi
-    if [[ -n "${dns6}" ]]; then dns_rules+="        ip6 daddr { ${dns6} } meta l4proto { tcp, udp } th dport 53 accept"$'\n'; fi
     internet_rules="
-        # Name resolution, through this server's DNS servers only.
-${dns_rules}
+        # Name resolution, wherever the resolver is.
+        meta l4proto { tcp, udp } th dport 53 accept
+
         # Nothing on private, carrier-grade NAT or link-local networks (your LAN).
         ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10, 169.254.0.0/16 } counter drop
         ip6 daddr { fc00::/7, fe80::/10 } counter drop
 
         # The internet, on the allowed TCP ports only.
-        tcp dport { ${ports} } accept
+        tcp dport { ${EGRESS_ALLOWED_TCP_PORTS// /, } } accept
 
         # Everything else from the lab user: dropped and counted.
         counter drop comment \"lab user: mode online\""
@@ -300,7 +283,7 @@ systemctl start "${EGRESS_UNIT}"
 # ... and load the current file now, so a rerun always applies the latest rules.
 nft -f "${EGRESS_NFT_FILE}"
 if [[ "${egress_mode}" == "online" ]]; then
-    info "Policy active (online): loopback, DNS through this server's DNS servers, TCP ${EGRESS_ALLOWED_TCP_PORTS} to the internet. Nothing on the LAN."
+    info "Policy active (online): loopback, DNS, TCP ${EGRESS_ALLOWED_TCP_PORTS} to the internet. Nothing on the LAN."
 else
     warn "Policy active (OFFLINE): loopback only. No DNS, no internet, no LAN for ${LAB_USER}."
     info "To go back online: rerun $0 without --offline."

@@ -34,9 +34,7 @@ require_lab_user
 
 step "1/4 The lab user's network policy (root-owned, read with sudo)"
 # The rules as nftables has them loaded right now.
-# (The lab user's uid and any address are masked: none goes into the output.)
-sudo -n /usr/sbin/nft list table inet "${EGRESS_TABLE}" \
-    | sed -E 's/skuid [0-9]+/skuid <lab user uid>/; s/([0-9]{1,3}\.){3}[0-9]{1,3}/<address>/g; s/[0-9a-f]+(:[0-9a-f]*){2,7}/<address>/g; s/^/    /'
+sudo -n /usr/sbin/nft list table inet "${EGRESS_TABLE}" | sed 's/^/    /'
 mode="$(egress_mode)"
 info "Mode: ${mode}"
 [[ "${mode}" == "offline" ]] \
@@ -54,29 +52,22 @@ must_fail() {
     else
         info "${label}: failed, as it must."
         # The command's own last message line, if it printed one.
-        # (Addresses in it are masked: none goes into the output.)
-        [[ -n "${out}" ]] && info "  $(tail -1 <<< "${out}" | sed -E 's/([0-9]{1,3}\.){3}[0-9]{1,3}/<address>/g')"
+        [[ -n "${out}" ]] && info "  $(tail -1 <<< "${out}")"
         failed_ok=$(( failed_ok + 1 ))
     fi
 }
 # The resolver(s) this server uses, from /etc/resolv.conf.
 resolvers="$(awk '/^nameserver/ { printf "%s ", $2 }' /etc/resolv.conf)"
-info "Resolvers in /etc/resolv.conf: $(wc -w <<< "${resolvers}") (addresses not shown)"
+info "Resolvers in /etc/resolv.conf: ${resolvers:-none}"
 # DNS: reported, not required (see the header).
 if dns="$(timeout 10 getent hosts openrouter.ai 2>&1)"; then
-    warn "DNS lookup of openrouter.ai: it answered. Your resolver runs on this server,"
+    warn "DNS lookup of openrouter.ai: it answered (${dns%% *}). Your resolver runs on this server (${resolvers}),"
     warn "  as another user. Names resolve; connections can't follow (the two tests below)."
 else
     info "DNS lookup of openrouter.ai     : failed, as it must."
 fi
 must_fail "HTTPS to openrouter.ai          " curl -sS -o /dev/null --max-time 10 https://openrouter.ai/api/v1/models
-# An internet address, no DNS needed: this server's first DNS server, read at
-# run time (no address in this script, and none in its output).
-probe="$(awk '/^nameserver/ && $2 !~ /^(127\.|::1$)/ {print $2; exit}' /etc/resolv.conf)"
-[[ -n "${probe}" ]] || die "no DNS server address in /etc/resolv.conf to test with."
-# An IPv6 address goes into brackets in a URL.
-[[ "${probe}" == *:* ]] && probe="[${probe}]"
-must_fail "HTTPS by address (no DNS needed)" curl -sS -o /dev/null --max-time 10 "https://${probe}/"
+must_fail "HTTPS to 1.1.1.1 (no DNS needed)" curl -sS -o /dev/null --max-time 10 https://1.1.1.1/
 (( failed_ok == 2 )) || die "the lab user can still reach the internet."
 
 step "3/4 Does the lab still work on loopback? (each test must WORK)"

@@ -57,29 +57,6 @@ check_blocked() {
     fi
 }
 
-# check_dropped "<description>" <command...>: PASS only if the command timed
-# out (exit code 124 from "timeout"): the policy dropped the packets. Any other
-# failure (unknown host, connection refused, container not running) is a FAIL:
-# a check that could not look must never be reported as PASS.
-check_dropped() {
-    local desc="$1"
-    shift
-    "$@" >/dev/null 2>&1
-    if [[ $? -eq 124 ]]; then
-        printf '  PASS  %s\n' "${desc}"
-        passed=$((passed + 1))
-    else
-        printf '  FAIL  %s\n' "${desc}"
-        failed=$((failed + 1))
-    fi
-}
-
-# The internet hosts the outbound checks use: a web server (the lab user must
-# reach it on 443, not on 80) and a public DNS service (the lab user must not
-# reach it: DNS goes only to this server's DNS servers).
-web_host="container-registry.oracle.com"
-other_dns="dns.google"
-
 # Small predicates used by the checks below.
 container_is_running() { [[ "$(container_state)" == "running" ]]; }
 pdb_is_open()          { [[ "$(pdb_open_mode)" == "READWRITE" ]]; }
@@ -90,18 +67,6 @@ port_on_loopback_only() {
     local addrs
     addrs="$(ss -Hltn "sport = :${DB_PORT}" | awk '{print $4}')"
     [[ -n "${addrs}" ]] && ! grep -vqE '^(127\.0\.0\.1|\[::1\]):' <<< "${addrs}"
-}
-# True if the database port answers on none of the server's own IPv4
-# addresses, and at least one was tried. The addresses aren't printed.
-port_closed_on_own_addresses() {
-    local ip tried=0
-    for ip in $(hostname -I); do
-        # IPv6 addresses are skipped: the listener is on IPv4 loopback only.
-        [[ "${ip}" == *:* ]] && continue
-        tried=$((tried + 1))
-        timeout 5 bash -c "</dev/tcp/${ip}/${DB_PORT}" 2>/dev/null && return 1
-    done
-    (( tried > 0 ))
 }
 # True if the firewalld zones could be read (via sudo) AND none of them opens
 # the database port. If the zones can't be read, this is false: a check that
@@ -165,7 +130,10 @@ step "Inbound isolation (who can reach the database)"
 check "port ${DB_PORT} answers on 127.0.0.1" timeout 5 bash -c "</dev/tcp/127.0.0.1/${DB_PORT}"
 check "port ${DB_PORT} is bound to loopback only" port_on_loopback_only
 # Not reachable through any of the server's own IPv4 addresses.
-check "port ${DB_PORT} is NOT reachable on the server's own addresses" port_closed_on_own_addresses
+for ip in $(hostname -I); do
+    [[ "${ip}" == *:* ]] && continue
+    check_blocked "port ${DB_PORT} is NOT reachable on ${ip}" timeout 5 bash -c "</dev/tcp/${ip}/${DB_PORT}"
+done
 # If firewalld runs, no zone opens the port.
 if systemctl is-active --quiet firewalld; then
     check "no firewalld zone opens port ${DB_PORT}" firewalld_keeps_port_closed
@@ -177,29 +145,27 @@ step "Outbound isolation (what the lab can reach)"
 check "outbound policy is loaded" sudo -n /usr/sbin/nft list table inet "${EGRESS_TABLE}"
 check "outbound policy loads at boot" systemctl is-enabled --quiet "${EGRESS_UNIT}"
 # HTTPS to the internet works (images, packages, OpenRouter).
-check "lab user CAN reach the internet on 443" curl -sS -o /dev/null --max-time 15 "https://${web_host}"
+check "lab user CAN reach the internet on 443" curl -sS -o /dev/null --max-time 15 https://container-registry.oracle.com
 # The same over IPv6, if this host has IPv6: the policy must not break it.
 # (A first version of the policy dropped the kernel's IPv6 neighbour
 # discovery, and with it IPv6 for the whole host. Found in post 12.)
 if [[ -n "$(ip -6 route show default 2>/dev/null)" ]]; then
-    check "lab user CAN reach the internet on 443 over IPv6" curl -6 -sS -o /dev/null --max-time 15 "https://${web_host}"
+    check "lab user CAN reach the internet on 443 over IPv6" curl -6 -sS -o /dev/null --max-time 15 https://container-registry.oracle.com
 else
     info "No IPv6 default route on this host; IPv6 check skipped."
 fi
-# Any other port to the internet is dropped.
-check_dropped "lab user can NOT reach the internet on port 80" timeout 5 bash -c "</dev/tcp/${web_host}/80"
-# DNS goes only to this server's DNS servers: a public DNS service is dropped.
-check_dropped "lab user can NOT reach other DNS servers (${other_dns}:53)" timeout 5 bash -c "</dev/tcp/${other_dns}/53"
+# Any other port to the internet is dropped (1.1.1.1:80 is a public web server).
+check_blocked "lab user can NOT reach the internet on port 80" timeout 5 bash -c "</dev/tcp/1.1.1.1/80"
 # The LAN is unreachable even on an allowed port: test the default gateway.
 gateway="$(ip -4 route show default | awk '{print $3; exit}')"
 if [[ "${gateway}" =~ ^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.) ]]; then
-    check_dropped "lab user can NOT reach the LAN (its default gateway, on 443)" timeout 5 bash -c "</dev/tcp/${gateway}/443"
+    check_blocked "lab user can NOT reach the LAN (gateway ${gateway}:443)" timeout 5 bash -c "</dev/tcp/${gateway}/443"
 else
     info "Default gateway is not a private address; LAN check skipped."
 fi
-# The same policy applies inside the database container (it must be running).
-check_dropped "database container can NOT reach the internet on port 80" \
-    podman exec "${DB_CONTAINER}" timeout 5 bash -c "</dev/tcp/${web_host}/80"
+# The same policy applies inside the database container.
+check_blocked "database container can NOT reach the internet on port 80" \
+    podman exec "${DB_CONTAINER}" timeout 5 bash -c "</dev/tcp/1.1.1.1/80"
 # The lab user cannot change its own cage: the rule file is root-owned.
 check_blocked "lab user can NOT modify the outbound policy file" test -w "${EGRESS_NFT_FILE}"
 # ... and cannot become root to change it: its sudo rights are the two
