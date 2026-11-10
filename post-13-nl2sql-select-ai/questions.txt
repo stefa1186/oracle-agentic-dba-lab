@@ -1,0 +1,19 @@
+# The test set: one question per line, four fields separated by "|":
+#   id | group | question | reference SQL (written by hand, on one line)
+# NO_ANSWER as the reference means: the schema can't answer the question, and
+# the right answer is to say so. Lines starting with # are comments.
+S1|simple|How many customers live in Italy?|select count(*) from sh.customers c join sh.countries co on co.country_id = c.country_id where co.country_name = 'Italy'
+S2|simple|How many products are in the Golf category?|select count(*) from sh.products where prod_category = 'Golf'
+S3|simple|List the names of all sales channels.|select channel_desc from sh.channels
+S4|simple|How many customers were born before 1950?|select count(*) from sh.customers where cust_year_of_birth < 1950
+J1|joins|What was the total sales amount per product category in 2021?|select p.prod_category, sum(s.amount_sold) from sh.sales s join sh.products p on p.prod_id = s.prod_id where s.time_id >= date '2021-01-01' and s.time_id < date '2022-01-01' group by p.prod_category
+J2|joins|What is the total quantity sold per sales channel?|select ch.channel_desc, sum(s.quantity_sold) from sh.sales s join sh.channels ch on ch.channel_id = s.channel_id group by ch.channel_desc
+J3|joins|What is the total sales amount per country, for customers in Europe?|select co.country_name, sum(s.amount_sold) from sh.sales s join sh.customers c on c.cust_id = s.cust_id join sh.countries co on co.country_id = c.country_id where co.country_region = 'Europe' group by co.country_name
+J4|joins|How many different customers bought something through the Internet channel?|select count(distinct s.cust_id) from sh.sales s join sh.channels ch on ch.channel_id = s.channel_id where ch.channel_desc = 'Internet'
+T1|time|What was the total sales amount per year? Return the year as a number.|select extract(year from time_id), sum(amount_sold) from sh.sales group by extract(year from time_id)
+T2|time|What was the total sales amount per month in 2022? Return the month as a number from 1 to 12.|select extract(month from time_id), sum(amount_sold) from sh.sales where time_id >= date '2022-01-01' and time_id < date '2023-01-01' group by extract(month from time_id)
+T3|time|How many customers bought in both 2021 and 2022, but spent less in 2022 than in 2021?|select count(*) from (select cust_id, sum(case when extract(year from time_id) = 2021 then amount_sold end) a21, sum(case when extract(year from time_id) = 2022 then amount_sold end) a22 from sh.sales group by cust_id) where a21 is not null and a22 is not null and a22 < a21
+T4|time|In which month of 2020 was the total sales amount highest? Return the month as a number from 1 to 12.|select extract(month from time_id) from sh.sales where time_id >= date '2020-01-01' and time_id < date '2021-01-01' group by extract(month from time_id) order by sum(amount_sold) desc fetch first 1 row only
+X1|traps|Which 5 products had the highest total sales amount? Return their names.|select p.prod_name from sh.sales s join sh.products p on p.prod_id = s.prod_id group by p.prod_id, p.prod_name order by sum(s.amount_sold) desc fetch first 5 rows only
+X2|traps|How many customers are in each loyalty tier?|NO_ANSWER
+X3|traps|How many customers are female?|select count(*) from sh.customers where cust_gender = 'F'
