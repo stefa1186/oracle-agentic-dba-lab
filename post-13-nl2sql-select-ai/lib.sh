@@ -21,11 +21,8 @@ load_post13_config() {
         # shellcheck disable=SC1091
         source "${POST13_DIR}/.env"
     fi
-    # The read-only user must be a plain upper-case Oracle name.
-    [[ "${RO_USER}" =~ ^[A-Z][A-Z0-9_]{0,29}$ ]] || die "RO_USER must be an upper-case Oracle identifier."
-    # Private password files (mode 600), next to post 01's.
+    # SH's private password file (mode 600), next to post 01's.
     SH_PASSWORD_FILE="${LAB_CONF_DIR}/sh_pwd"
-    RO_PASSWORD_FILE="${LAB_CONF_DIR}/nl2sql_ro_pwd"
     # Downloads and results of this post.
     DOWNLOAD_DIR="${HOME}/opt/downloads"
     OUT_DIR="${HOME}/oracle-agentic-dba-lab/output/post-13-nl2sql-select-ai"

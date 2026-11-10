@@ -5,10 +5,11 @@
 # Sets up the NL2SQL test, as the lab user:
 #   1. Oracle's sample schemas, pinned and checksummed (SH lives in them)
 #   2. the SH schema in FREEPDB1, installed with Oracle's own script
-#   3. the read-only user the generated SQL runs as: SELECT on SH, nothing else
+#   3. SELECT on SH for part 2's agent user, nothing else
 #
-# Needs part 1's lab and part 2's SQLcl (Oracle's SH script loads its data
-# with SQLcl's LOAD command). Safe to rerun: SH and the user are recreated.
+# Needs part 1's lab and part 2's SQLcl, agent user and saved connection
+# (Oracle's SH script loads its data with SQLcl's LOAD command).
+# Safe to rerun: SH and the grants are recreated.
 # =============================================================================
 
 # Stop on errors (-e), unset variables (-u) and failures inside pipelines.
@@ -81,39 +82,27 @@ select table_name, num_rows from dba_tables where owner = 'SH' order by table_na
 SQL
 
 # -----------------------------------------------------------------------------
-step "3/3 The read-only user ${RO_USER}"
+step "3/3 SELECT on SH for the agent's user, ${AGENT_DB_USER}"
 # -----------------------------------------------------------------------------
-# Its password, generated once and kept private.
-ensure_password "${RO_PASSWORD_FILE}"
-# Recreated every run: CREATE SESSION, and SELECT on each SH table. Nothing else.
+# The agent reads SH through SQLcl's MCP server, with part 2's saved connection
+# "agent", like in every part. Its user gets SELECT on each of SH's 9 base
+# tables: not the Oracle Text index tables (DR$...) and not the materialized
+# views (..._MV). Nothing else. SH is recreated above, so the grants are too.
 db_sqlplus <<SQL
 whenever sqlerror exit failure
 set feedback off heading off pagesize 0
 alter session set container = FREEPDB1;
-declare
-    l_count number;
 begin
-    -- Drop it if it exists, then create it from scratch.
-    select count(*) into l_count from dba_users where username = '${RO_USER}';
-    if l_count > 0 then
-        execute immediate 'drop user ${RO_USER} cascade';
-    end if;
-    execute immediate 'create user ${RO_USER} identified by "$(cat "${RO_PASSWORD_FILE}")"';
-    execute immediate 'grant create session to ${RO_USER}';
-    -- SELECT on each of SH's 9 base tables: not its Oracle Text index tables
-    -- (DR$...) and not its materialized views (..._MV).
     for t in (select table_name from dba_tables where owner = 'SH'
-              and table_name not like 'DR$%' and table_name not like '%\_MV' escape '\') loop
-        execute immediate 'grant select on sh.' || t.table_name || ' to ${RO_USER}';
+              and table_name not like 'DR\$%' and table_name not like '%\_MV' escape '\') loop
+        execute immediate 'grant select on sh.' || t.table_name || ' to ${AGENT_DB_USER}';
     end loop;
 end;
 /
--- What it may do, from the dictionary.
-select 'privilege ' || privilege from dba_sys_privs where grantee = '${RO_USER}'
-union all
-select 'SELECT on ' || owner || '.' || table_name from dba_tab_privs where grantee = '${RO_USER}'
-order by 1;
+-- What it may read in SH, from the dictionary.
+select 'SELECT on ' || owner || '.' || table_name from dba_tab_privs
+where grantee = '${AGENT_DB_USER}' and owner = 'SH' order by 1;
 SQL
 
 step "Done"
-info "Next: ./02_build_inputs.sh"
+info "Next: ./03_run_agent.sh"

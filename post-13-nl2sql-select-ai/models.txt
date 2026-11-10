@@ -1,3 +1,3 @@
-# Models for post 13, one per line: <provider> <model id>. Used by 04_run_agent.sh.
+# Models for post 13, one per line: <provider> <model id>. Used by 03_run_agent.sh.
 openrouter nvidia/nemotron-3-ultra-550b-a55b
 openrouter qwen/qwen3-coder
