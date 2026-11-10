@@ -11,10 +11,9 @@
 #       Oracle analogy: DROP DATABASE, then DBCA from the same template.
 #
 #   ./99_destroy.sh --all
-#       Removes everything 02_build.sh created: container, datafiles,
-#       network, secret and password file. The image stays: root's setup
-#       downloads it, because the lab user can't. The lab user, its image
-#       and the root setup go with "sudo ./00_root_setup.sh --remove".
+#       Removes everything 02_build.sh created: container, datafiles, image,
+#       network, secret and password file. The lab user and the root setup
+#       stay; remove those with "sudo ./00_root_setup.sh --remove".
 #
 # Asks for confirmation unless --yes is added.
 # Safe to run more than once: anything already gone is skipped.
@@ -53,7 +52,7 @@ if (( ! assume_yes )); then
     if [[ "${level}" == "db" ]]; then
         echo "This deletes the database container and ALL its datafiles (volume ${DB_VOLUME})."
     else
-        echo "This deletes the database, its datafiles, the network, the secret and the password file (the image stays)."
+        echo "This deletes the database, its datafiles, the image, the network, the secret and the password file."
     fi
     read -r -p "Type 'destroy' to confirm: " answer
     [[ "${answer}" == "destroy" ]] || die "not confirmed; nothing was changed."
@@ -77,8 +76,9 @@ if [[ "${level}" == "db" ]]; then
     exit 0
 fi
 
-step "Removing the network, secret and password"
-# The image stays: the lab user can't download it again (root's setup does).
+step "Removing the image, network, secret and password"
+# The image (several GB).
+podman rmi --ignore "${DB_IMAGE}" >/dev/null && info "Image ${DB_IMAGE} removed."
 # The lab network.
 if podman network exists "${DB_NETWORK}"; then
     podman network rm "${DB_NETWORK}" >/dev/null

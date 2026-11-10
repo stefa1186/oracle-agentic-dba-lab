@@ -4,8 +4,8 @@ Builds and destroys the isolated lab on a CentOS 10 server:
 
 - a dedicated Linux user, **`oralab`**, with no password, owning everything in the lab
 - an outbound network policy for that user: loopback, DNS through the
-  server's own DNS servers, and HTTPS to OpenRouter only
-  (`EGRESS_ALLOWED_HOSTS`); no other host, nothing on the local network
+  server's own DNS servers, and HTTPS to the internet; nothing on the local
+  network
 - Oracle AI Database 26ai Free in a rootless Podman container, with its
   listener on `127.0.0.1` only and the password passed as a Podman secret
 
@@ -18,7 +18,7 @@ actions, then everything is done as the software owner.
 
 | Script | Runs as | Purpose |
 |---|---|---|
-| `00_root_setup.sh` | **root** | Packages, the `oralab` user, linger, outbound policy, sudoers entry, the database image (`oralab` can't download it), and a read-only copy of this repository for `oralab`. `--remove` undoes all of it. |
+| `00_root_setup.sh` | **root** | Packages, the `oralab` user, linger, outbound policy, sudoers entry, and a read-only copy of this repository for `oralab`. `--remove` undoes all of it. |
 | `env.example` | — | Settings with defaults. To change one, copy to `.env` and edit (`.env` is never committed). |
 | `lib.sh` | — | Helpers shared by the scripts (not run directly) |
 | `01_prereqs.sh` | oralab | Checks the root setup, the tools and the resources. Changes nothing. |
@@ -26,7 +26,7 @@ actions, then everything is done as the software owner.
 | `03_verify.sh` | oralab | PASS/FAIL checks: database up, unreachable from outside, outbound limited |
 | `04_test_policy.sh [setup script]` | oralab | The outbound policy's rules, tested in a throwaway network namespace (no root, nothing on the host changes): online and offline, for the lab user and for another user |
 | `99_destroy.sh --db-only` | oralab | Deletes the database and its datafiles; keeps everything else |
-| `99_destroy.sh --all` | oralab | Deletes everything `02_build.sh` created (the image stays) |
+| `99_destroy.sh --all` | oralab | Deletes everything `02_build.sh` created |
 
 ## Step by step
 
@@ -49,7 +49,7 @@ or GitHub credentials to update it (see "The repository copy" below).
 machinectl shell oralab@               # log in as the lab user
 cd ~/oracle-agentic-dba-lab/post-01-why-and-the-cage
 ./01_prereqs.sh
-./02_build.sh                           # first run: database creation, about 5 minutes
+./02_build.sh                           # first run: image download + database creation, 15-30 min
 ./03_verify.sh
 ```
 
@@ -102,10 +102,8 @@ visudo -f /etc/sudoers.d/oralab
 #    oralab ALL=(root) NOPASSWD: /usr/sbin/nft list table inet oralab_egress, /usr/bin/firewall-cmd --list-all-zones
 ```
 
-The script additionally installs the packages, the outbound policy
-(`/etc/oralab/egress.nft`, loaded at boot by `oralab-egress.service`) and
-the database image, which `oralab` can't download itself: root pulls it as
-`oralab`, into `oralab`'s storage, during a short download window.
+The script additionally installs the packages and the outbound policy
+(`/etc/oralab/egress.nft`, loaded at boot by `oralab-egress.service`).
 
 **Why the sudoers entry is so small.** The lab user must not be able to
 loosen its own cage, so the policy is written and loaded by root only. The
@@ -132,13 +130,10 @@ GRANT ANY PRIVILEGE, the one grant that contains all the others.
 - **The image is pinned by digest** in `env.example`, so every clone and
   every rebuild uses exactly the same image. Upgrading is a deliberate step:
   pull the new `latest`, read its digest, update `DB_IMAGE` in
-  `env.example`, commit, rerun `sudo ./00_root_setup.sh` (it downloads the
-  image), then `./02_build.sh`.
-- **Changing what the lab can reach** is a root action: edit
-  `EGRESS_ALLOWED_HOSTS` (host names) or `EGRESS_ALLOWED_TCP_PORTS` and rerun
-  `sudo ./00_root_setup.sh`. Root resolves the names when it runs; rerun it
-  if a provider changes its addresses. A host behind a shared CDN shares its
-  addresses with other sites: the policy filters addresses, not names.
+  `env.example`, commit, rerun `./02_build.sh`.
+- **Changing the outbound ports** is a root action: edit
+  `EGRESS_ALLOWED_TCP_PORTS` and rerun `sudo ./00_root_setup.sh`. The rerun
+  also reads the server's DNS servers again (`/etc/resolv.conf`).
 - **Offline mode (post 12):** `sudo ./00_root_setup.sh --offline` cuts the lab
   user to loopback only: no DNS, no internet, no LAN. The database and local
   models keep working. Rerun without `--offline` to go back online. The mode
@@ -156,8 +151,8 @@ Connect string from the server: `127.0.0.1:1521/FREEPDB1`.
 ## Removing everything
 
 ```bash
-./99_destroy.sh --all                  # as oralab: database, network, password (the image stays)
-sudo ./00_root_setup.sh --remove       # as administrator: user (with its image), sudoers, policy
+./99_destroy.sh --all                  # as oralab: database, image, password
+sudo ./00_root_setup.sh --remove       # as administrator: user, sudoers, policy
 ```
 
 ## Why the isolation works

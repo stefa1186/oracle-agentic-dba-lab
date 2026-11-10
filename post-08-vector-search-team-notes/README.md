@@ -35,10 +35,6 @@ agent gets its results attached to the prompt, with **no tools**.
 ## Step by step
 
 ```bash
-# as root: a download window for the embedding model
-sudo /root/oracle-agentic-dba-lab/post-01-why-and-the-cage/00_root_setup.sh --download-window
-
-# as oralab
 cd ~/oracle-agentic-dba-lab/post-08-vector-search-team-notes
 ./01_get_model.sh              # verified against the pinned MODEL_SHA256
 ./02_setup.sh

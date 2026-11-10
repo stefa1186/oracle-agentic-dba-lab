@@ -74,11 +74,10 @@ check_dropped() {
     fi
 }
 
-# The internet hosts the outbound checks use: the first allowed host (the lab
-# user must reach it on 443), another web server and a public DNS service
-# (the lab user must reach neither).
-allowed_host="${EGRESS_ALLOWED_HOSTS%% *}"
-other_host="container-registry.oracle.com"
+# The internet hosts the outbound checks use: a web server (the lab user must
+# reach it on 443, not on 80) and a public DNS service (the lab user must not
+# reach it: DNS goes only to this server's DNS servers).
+web_host="container-registry.oracle.com"
 other_dns="dns.google"
 
 # Small predicates used by the checks below.
@@ -177,24 +176,18 @@ step "Outbound isolation (what the lab can reach)"
 # -----------------------------------------------------------------------------
 check "outbound policy is loaded" sudo -n /usr/sbin/nft list table inet "${EGRESS_TABLE}"
 check "outbound policy loads at boot" systemctl is-enabled --quiet "${EGRESS_UNIT}"
-if [[ -n "${allowed_host}" ]]; then
-    # HTTPS to an allowed host works (OpenRouter: the models' API).
-    check "lab user CAN reach ${allowed_host} on 443" curl -sS -o /dev/null --max-time 15 "https://${allowed_host}"
-    # The same over IPv6, if this host has IPv6: the policy must not break it.
-    # (A first version of the policy dropped the kernel's IPv6 neighbour
-    # discovery, and with it IPv6 for the whole host. Found in post 12.)
-    if [[ -n "$(ip -6 route show default 2>/dev/null)" ]]; then
-        check "lab user CAN reach ${allowed_host} on 443 over IPv6" curl -6 -sS -o /dev/null --max-time 15 "https://${allowed_host}"
-    else
-        info "No IPv6 default route on this host; IPv6 check skipped."
-    fi
-    # Any other port is dropped, even to an allowed host.
-    check_dropped "lab user can NOT reach ${allowed_host} on port 80" timeout 5 bash -c "</dev/tcp/${allowed_host}/80"
+# HTTPS to the internet works (images, packages, OpenRouter).
+check "lab user CAN reach the internet on 443" curl -sS -o /dev/null --max-time 15 "https://${web_host}"
+# The same over IPv6, if this host has IPv6: the policy must not break it.
+# (A first version of the policy dropped the kernel's IPv6 neighbour
+# discovery, and with it IPv6 for the whole host. Found in post 12.)
+if [[ -n "$(ip -6 route show default 2>/dev/null)" ]]; then
+    check "lab user CAN reach the internet on 443 over IPv6" curl -6 -sS -o /dev/null --max-time 15 "https://${web_host}"
 else
-    info "EGRESS_ALLOWED_HOSTS is empty: no allowed host to test."
+    info "No IPv6 default route on this host; IPv6 check skipped."
 fi
-# Any other host is dropped, even on 443.
-check_dropped "lab user can NOT reach other hosts (${other_host}:443)" timeout 5 bash -c "</dev/tcp/${other_host}/443"
+# Any other port to the internet is dropped.
+check_dropped "lab user can NOT reach the internet on port 80" timeout 5 bash -c "</dev/tcp/${web_host}/80"
 # DNS goes only to this server's DNS servers: a public DNS service is dropped.
 check_dropped "lab user can NOT reach other DNS servers (${other_dns}:53)" timeout 5 bash -c "</dev/tcp/${other_dns}/53"
 # The LAN is unreachable even on an allowed port: test the default gateway.
@@ -205,8 +198,8 @@ else
     info "Default gateway is not a private address; LAN check skipped."
 fi
 # The same policy applies inside the database container (it must be running).
-check_dropped "database container can NOT reach other hosts (${other_host}:443)" \
-    podman exec "${DB_CONTAINER}" timeout 5 bash -c "</dev/tcp/${other_host}/443"
+check_dropped "database container can NOT reach the internet on port 80" \
+    podman exec "${DB_CONTAINER}" timeout 5 bash -c "</dev/tcp/${web_host}/80"
 # The lab user cannot change its own cage: the rule file is root-owned.
 check_blocked "lab user can NOT modify the outbound policy file" test -w "${EGRESS_NFT_FILE}"
 # ... and cannot become root to change it: its sudo rights are the two

@@ -83,9 +83,11 @@ fi
 # =============================================================================
 step "3/3 Database container"
 # =============================================================================
-# The image comes from root's setup: the lab user's HTTPS reaches only the
-# allowed hosts (env.example), not the container registry.
-podman image exists "${DB_IMAGE}" || die "the database image is missing. Root downloads it: sudo ./00_root_setup.sh"
+# Pull the image if it isn't present (several GB, first time only).
+if ! podman image exists "${DB_IMAGE}"; then
+    info "Pulling ${DB_IMAGE} (several GB, first time only)..."
+    podman pull "${DB_IMAGE}"
+fi
 # Show the image reference (pinned by digest in env.example) and its digest, for the run notes.
 info "Image:  ${DB_IMAGE}"
 info "Digest: $(podman image inspect --format '{{.Digest}}' "${DB_IMAGE}")"

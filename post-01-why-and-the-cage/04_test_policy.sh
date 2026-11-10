@@ -13,11 +13,11 @@
 # How: "unshare" gives this script its own user and network namespace (an
 # empty network stack of its own, like a private PDB with no listener). In it:
 #   - a virtual cable (veth) to a second, private namespace "B"
-#   - in B, three documentation addresses: 2001:db8::2 plays the allowed host,
-#     ::3 any other host, ::4 the server's DNS server; listeners on ::2 443
-#     and 80, ::3 443 and 53, ::4 53
+#   - in B, three documentation addresses: 2001:db8::2 plays an internet host,
+#     ::4 the server's DNS server, ::3 any other DNS server; listeners on ::2
+#     443 and 80, ::4 53, ::3 53
 #   - in this namespace, one more on loopback: [::1]:5555
-# Then each rule file is loaded here, and six connections are tried. IPv6 on
+# Then each rule file is loaded here, and five connections are tried. IPv6 on
 # purpose: a connection over IPv6 first needs
 # neighbour discovery (IPv6's ARP), packets the kernel sends itself, which
 # belong to no user. A rule set that drops them breaks IPv6 for everyone.
@@ -31,10 +31,10 @@
 #      here (the first version of the policy did, for the whole host)
 #
 # Expected, and checked:
-#                     allowed:443 other:443 allowed:80 dns:53  other:53 loopback
-#   lab user, online  works       blocked   blocked    works   blocked  works
-#   lab user, offline blocked     blocked   blocked    blocked blocked  works
-#   another user      works       works     works      works   works    works
+#                     443      80       dns:53   other:53 loopback
+#   lab user, online  works    blocked  works    blocked  works
+#   lab user, offline blocked  blocked  blocked  blocked  works
+#   another user      works    works    works    works    works
 #
 # Run as the lab user. Changes nothing outside its own namespaces.
 # Needs: unshare, nsenter, ip, nft, python3 (all on the lab since post 01).
@@ -86,8 +86,8 @@ for uid in 0 4242; do
             id() { echo "${uid}"; }
             # The mode, as 00_root_setup.sh would set it from its argument.
             egress_mode="${mode}"
-            # The addresses 00_root_setup.sh would resolve: here, the test's own.
-            allowed4="" allowed6="2001:db8::2" dns4="" dns6="2001:db8::4"
+            # The DNS servers 00_root_setup.sh would read: here, the test's own.
+            dns4="" dns6="2001:db8::4"
             # Where the block writes the rule file (a test file, not /etc).
             EGRESS_NFT_FILE="${work}/${mode}_${uid}.nft"
             # shellcheck disable=SC1091
@@ -146,9 +146,9 @@ while True:
 ' "$1" "$2"
 }
 export -f listen
-# Five listeners in B, one on this namespace's loopback.
+# Four listeners in B, one on this namespace's loopback.
 pids=()
-for l in "2001:db8::2 443" "2001:db8::2 80" "2001:db8::3 443" "2001:db8::3 53" "2001:db8::4 53"; do
+for l in "2001:db8::2 443" "2001:db8::2 80" "2001:db8::3 53" "2001:db8::4 53"; do
     nsenter -t "${pid_b}" -n bash -c "listen ${l}" < /dev/null & pids+=($!)
 done
 listen ::1 5555 < /dev/null & pids+=($!)
@@ -159,11 +159,11 @@ try() {
 }
 # The expected results, per rule file, in the order of the columns below.
 declare -A want=(
-    [online_0]="works blocked blocked works blocked works"
-    [offline_0]="blocked blocked blocked blocked blocked works"
-    [online_4242]="works works works works works works"
-    [offline_4242]="works works works works works works"
-    [loaded_4242]="works works works works works works"
+    [online_0]="works blocked works blocked works"
+    [offline_0]="blocked blocked blocked blocked works"
+    [online_4242]="works works works works works"
+    [offline_4242]="works works works works works"
+    [loaded_4242]="works works works works works"
 )
 # Readable names for the rule files.
 declare -A label=(
@@ -175,18 +175,18 @@ declare -A label=(
 )
 failed=0
 # One row per rule file: what each connection did, then PASS or FAIL.
-fmt='    %-22s %-11s %-9s %-10s %-7s %-8s %-8s %s\n'
+fmt='    %-22s %-8s %-8s %-8s %-9s %-9s %s\n'
 # shellcheck disable=SC2059
-printf "${fmt}" "RULES" "ALLOWED:443" "OTHER:443" "ALLOWED:80" "DNS:53" "OTHER:53" "LOOPBACK" "RESULT"
+printf "${fmt}" "RULES" "443" "80" "DNS:53" "OTHER:53" "LOOPBACK" "RESULT"
 for f in online_0 offline_0 online_4242 offline_4242 loaded_4242; do
     # Load this rule file alone.
     "${NFT}" flush ruleset
     "${NFT}" -f "${work}/${f}.nft"
     # Forget B's link-layer addresses, so the kernel must ask for them again.
     ip -6 neigh flush dev va 2>/dev/null || true
-    got="$(try 2001:db8::2 443) $(try 2001:db8::3 443) $(try 2001:db8::2 80) $(try 2001:db8::4 53) $(try 2001:db8::3 53) $(try ::1 5555)"
+    got="$(try 2001:db8::2 443) $(try 2001:db8::2 80) $(try 2001:db8::4 53) $(try 2001:db8::3 53) $(try ::1 5555)"
     if [[ "${got}" == "${want[${f}]}" ]]; then result="PASS"; else result="FAIL (expected: ${want[${f}]})"; failed=1; fi
-    # The six results as six columns.
+    # The five results as five columns.
     # shellcheck disable=SC2059,SC2086
     printf "${fmt}" "${label[${f}]}" ${got} "${result}"
 done
