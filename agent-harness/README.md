@@ -45,6 +45,8 @@ requests, different place where the data goes.
 ## Setup (as the lab user, once)
 
 ```bash
+# first, as root: a download window for the Python packages
+#   sudo /root/oracle-agentic-dba-lab/post-01-why-and-the-cage/00_root_setup.sh --download-window
 ./setup_harness.sh            # creates .venv and .env
 vi .env                       # set DEFAULT_PROVIDER, DEFAULT_MODEL, and OPENROUTER_API_KEY if used
 .venv/bin/python run_agent.py --list-tools    # tools published by SQLcl MCP
@@ -60,6 +62,7 @@ For hosted models:
 For local models, start the local server first (see `local-models/README.md`):
 
 ```bash
+# the downloads (the Ollama image, the models) need root's download window
 local-models/01_start_ollama.sh
 local-models/02_pull_model.sh <model>
 local-models/03_check_tool_calling.sh <model>

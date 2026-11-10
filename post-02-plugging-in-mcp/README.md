@@ -23,6 +23,10 @@ and `unzip`, which SQLcl needs.
 | `99_cleanup.sh --agent` / `--all` | Drops `AI_AGENT`; `--all` also removes SQLcl and its saved connections |
 
 ```bash
+# as root: a download window for SQLcl and the harness's Python packages (below)
+sudo /root/oracle-agentic-dba-lab/post-01-why-and-the-cage/00_root_setup.sh --download-window
+
+# as oralab
 cd ~/oracle-agentic-dba-lab/post-02-plugging-in-mcp
 ./01_install_sqlcl.sh
 ./02_create_agent_user.sh

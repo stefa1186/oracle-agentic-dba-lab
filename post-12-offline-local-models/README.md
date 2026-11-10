@@ -49,6 +49,9 @@ only in the isolated lab.
 | `99_cleanup.sh [--yes] [--purge-models]` | oralab | any | RAG_LAB dropped, role back to post 03, firewall enforcing, Ollama container removed (models kept unless `--purge-models`) |
 
 ```bash
+# as root: a download window for Ollama and the models (closes by itself)
+sudo /root/oracle-agentic-dba-lab/post-01-why-and-the-cage/00_root_setup.sh --download-window 120
+
 # as oralab (online)
 ./01_check_hardware.sh
 ./02_prepare_online.sh
@@ -120,7 +123,7 @@ the 27 GiB free, passes 02's tool check, a mixture of experts. Three
 candidates, plus one dense model to measure its speed, all pinned:
 
 ```bash
-# online: the four candidates (root: 00_root_setup.sh, without --offline)
+# online: the four candidates (root: 00_root_setup.sh, then 00_root_setup.sh --download-window 120)
 echo 'LOCAL_MODELS="gpt-oss:20b gemma4:26b qwen3-coder:30b qwen3.8:27b"' > .env
 ./01_check_hardware.sh
 ./02_prepare_online.sh
