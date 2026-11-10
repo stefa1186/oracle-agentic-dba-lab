@@ -17,12 +17,15 @@
 #   3. enables "linger" so the lab user's containers keep running
 #   4. loads the outbound network policy for the lab user (root-owned, so
 #      the lab user can't loosen its own cage), and reloads it at boot.
-#      Normal mode: loopback, DNS and HTTPS. Offline mode (--offline):
-#      loopback only. The mode is whatever the LAST run of this script wrote,
-#      and it survives a reboot
+#      Normal mode: loopback, DNS through this server's DNS servers, and
+#      HTTPS to the hosts in EGRESS_ALLOWED_HOSTS only (default: OpenRouter).
+#      Offline mode (--offline): loopback only. The mode is whatever the LAST
+#      run of this script wrote, and it survives a reboot
 #   5. installs a minimal sudoers entry: two READ-ONLY commands used by
 #      03_verify.sh. Nothing that changes the system.
-#   6. gives the lab user this repository WITHOUT GitHub credentials: a
+#   6. downloads the database image into the lab user's storage (the lab
+#      user can't: its HTTPS reaches only the allowed hosts)
+#   7. gives the lab user this repository WITHOUT GitHub credentials: a
 #      read-only mirror in /srv/oralab, made from root's own clone, and a
 #      first clone of it in the lab user's home
 #
@@ -122,7 +125,7 @@ fi
 # Set up
 # =============================================================================
 
-step "1/6 Operating system and packages"
+step "1/7 Operating system and packages"
 # /etc/os-release describes the distribution.
 # shellcheck disable=SC1091
 source /etc/os-release
@@ -146,7 +149,7 @@ dnf install -y podman passt container-selinux nftables iproute curl python3 syst
                java-21-openjdk-headless unzip
 info "$(podman --version)"
 
-step "2/6 Lab user '${LAB_USER}'"
+step "2/7 Lab user '${LAB_USER}'"
 if lab_user_exists; then
     # Never take over an account this script didn't create.
     lab_user_is_ours || die "user '${LAB_USER}' exists but was not created by this lab. Set another LAB_USER in .env."
@@ -162,13 +165,13 @@ fi
 grep -q "^${LAB_USER}:" /etc/subuid || die "no range for ${LAB_USER} in /etc/subuid. Check SUB_UID_* in /etc/login.defs."
 grep -q "^${LAB_USER}:" /etc/subgid || die "no range for ${LAB_USER} in /etc/subgid. Check SUB_GID_* in /etc/login.defs."
 
-step "3/6 Linger"
+step "3/7 Linger"
 # Linger keeps the lab user's service manager (and so its containers and
 # runtime directory) alive without an open login session. Idempotent.
 loginctl enable-linger "${LAB_USER}"
 info "Enabled."
 
-step "4/6 Outbound network policy for '${LAB_USER}'"
+step "4/7 Outbound network policy for '${LAB_USER}'"
 # Why one policy is enough: rootless containers have no network of their own
 # on the host. Everything they send leaves through a user-space process
 # (pasta) running as the lab user. So rules on "packets created by this user"
@@ -187,9 +190,9 @@ step "4/6 Outbound network policy for '${LAB_USER}'"
 # Rules for the lab user's packets, in order (normal mode):
 #   loopback               -> allowed (agent <-> database, local models)
 #   established replies    -> allowed
-#   DNS                    -> allowed
+#   DNS                    -> allowed, to this server's DNS servers only
 #   private / LAN networks -> dropped (no "database link" to the database next door)
-#   allowed TCP ports      -> allowed to the internet (default: 443 only)
+#   allowed hosts          -> allowed on the allowed TCP ports (default: OpenRouter, 443)
 #   anything else          -> dropped and counted
 #
 # Offline mode (--offline) keeps the first two (loopback, replies) and drops
@@ -198,22 +201,55 @@ step "4/6 Outbound network policy for '${LAB_USER}'"
 # SSH keeps working, even a login as the lab user: the connection belongs to
 # the SSH server, which runs as root.
 [[ "${EGRESS_ALLOWED_TCP_PORTS}" =~ ^[0-9]+( [0-9]+)*$ ]] || die "EGRESS_ALLOWED_TCP_PORTS must be port numbers separated by spaces."
+# Host names only: addresses never go into the settings.
+[[ -z "${EGRESS_ALLOWED_HOSTS}" || "${EGRESS_ALLOWED_HOSTS}" =~ ^[A-Za-z0-9.-]+( [A-Za-z0-9.-]+)*$ ]] || die "EGRESS_ALLOWED_HOSTS must be host names separated by spaces."
+[[ ! " ${EGRESS_ALLOWED_HOSTS} " =~ \ [0-9.]+\  ]] || die "EGRESS_ALLOWED_HOSTS takes host names, not addresses."
 # Root-owned folder for the rule file.
 install -d -m 755 -o root -g root /etc/oralab
+# The addresses behind the names, resolved now, by root: the allowed hosts
+# (EGRESS_ALLOWED_HOSTS) and this server's DNS servers (/etc/resolv.conf).
+# Only the generated rule file holds addresses. Each list is comma-separated,
+# sorted, without duplicates, and may be empty (a host without IPv6, or a DNS
+# resolver on loopback, which is allowed anyway). Not needed offline.
+allowed4="" allowed6="" dns4="" dns6=""
+if [[ "${egress_mode}" != "offline" ]]; then
+    # Every address of every allowed host (IPv6: no IPv4-mapped ones).
+    v4="" v6=""
+    for host in ${EGRESS_ALLOWED_HOSTS}; do
+        h4="$(getent ahostsv4 "${host}" | awk '{print $1}')" || true
+        h6="$(getent ahostsv6 "${host}" | awk '$1 !~ /^::ffff:/ {print $1}')" || true
+        [[ -n "${h4}${h6}" ]] || die "cannot resolve ${host} (EGRESS_ALLOWED_HOSTS)."
+        v4+="${h4}"$'\n'
+        v6+="${h6}"$'\n'
+    done
+    # Sorted, unique, comma-separated.
+    allowed4="$(grep -v '^$' <<< "${v4}" | sort -u | paste -sd, -)" || true
+    allowed6="$(grep -v '^$' <<< "${v6}" | sort -u | paste -sd, -)" || true
+    # The DNS servers, except loopback ones.
+    servers="$(awk '/^nameserver/ {print $2}' /etc/resolv.conf | grep -vE '^(127\.|::1$)')" || true
+    dns4="$(grep -v ':' <<< "${servers}" | grep -v '^$' | sort -u | paste -sd, -)" || true
+    dns6="$(grep ':' <<< "${servers}" | sort -u | paste -sd, -)" || true
+fi
 # The rules after "replies", by mode. Each mode ends with a counted drop whose
 # comment names the mode, so "nft list table" shows which mode is active.
 if [[ "${egress_mode}" == "online" ]]; then
+    # One rule per address family, only for the lists that aren't empty.
+    ports="${EGRESS_ALLOWED_TCP_PORTS// /, }"
+    dns_rules=""
+    host_rules=""
+    if [[ -n "${dns4}" ]]; then dns_rules+="        ip daddr { ${dns4} } meta l4proto { tcp, udp } th dport 53 accept"$'\n'; fi
+    if [[ -n "${dns6}" ]]; then dns_rules+="        ip6 daddr { ${dns6} } meta l4proto { tcp, udp } th dport 53 accept"$'\n'; fi
+    if [[ -n "${allowed4}" ]]; then host_rules+="        ip daddr { ${allowed4} } tcp dport { ${ports} } accept"$'\n'; fi
+    if [[ -n "${allowed6}" ]]; then host_rules+="        ip6 daddr { ${allowed6} } tcp dport { ${ports} } accept"$'\n'; fi
     internet_rules="
-        # Name resolution, wherever the resolver is.
-        meta l4proto { tcp, udp } th dport 53 accept
-
+        # Name resolution, through this server's DNS servers only.
+${dns_rules}
         # Nothing on private, carrier-grade NAT or link-local networks (your LAN).
         ip daddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 100.64.0.0/10, 169.254.0.0/16 } counter drop
         ip6 daddr { fc00::/7, fe80::/10 } counter drop
 
-        # The internet, on the allowed TCP ports only.
-        tcp dport { ${EGRESS_ALLOWED_TCP_PORTS// /, } } accept
-
+        # The allowed hosts (${EGRESS_ALLOWED_HOSTS:-none}), on the allowed TCP ports only.
+${host_rules}
         # Everything else from the lab user: dropped and counted.
         counter drop comment \"lab user: mode online\""
 else
@@ -283,13 +319,13 @@ systemctl start "${EGRESS_UNIT}"
 # ... and load the current file now, so a rerun always applies the latest rules.
 nft -f "${EGRESS_NFT_FILE}"
 if [[ "${egress_mode}" == "online" ]]; then
-    info "Policy active (online): loopback, DNS, TCP ${EGRESS_ALLOWED_TCP_PORTS} to the internet. Nothing on the LAN."
+    info "Policy active (online): loopback, DNS through this server's DNS servers, TCP ${EGRESS_ALLOWED_TCP_PORTS} to ${EGRESS_ALLOWED_HOSTS:-no host} only. Nothing on the LAN."
 else
     warn "Policy active (OFFLINE): loopback only. No DNS, no internet, no LAN for ${LAB_USER}."
     info "To go back online: rerun $0 without --offline."
 fi
 
-step "5/6 Sudoers entry for '${LAB_USER}'"
+step "5/7 Sudoers entry for '${LAB_USER}'"
 # Exactly two commands, both read-only, both with fixed arguments, used by
 # 03_verify.sh to prove the isolation:
 #   - list the lab's nftables table (reading the firewall needs root)
@@ -309,7 +345,37 @@ install -m 440 -o root -g root "${tmp}" "${SUDOERS_FILE}"
 rm -f "${tmp}"
 info "${SUDOERS_FILE} installed (2 read-only commands)."
 
-step "6/6 Repository for '${LAB_USER}' (no GitHub credentials)"
+step "6/7 Database image for '${LAB_USER}'"
+# The lab user's HTTPS reaches only the allowed hosts, so it can't download
+# the database image (pinned by digest, see env.example) itself. Root pulls
+# it AS the lab user, into the lab user's own storage, during a short
+# download window: the same rules plus HTTPS to any internet host (the
+# registry's addresses rotate, and its files come from a cloud storage
+# service). The real policy comes back right after, even if the pull fails.
+# A command as the lab user: from /, with its home and its runtime directory.
+as_lab_user() {
+    (cd / && runuser -u "${LAB_USER}" -- env HOME="${LAB_HOME}" \
+        XDG_RUNTIME_DIR="/run/user/$(id -u "${LAB_USER}")" \
+        DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$(id -u "${LAB_USER}")/bus" "$@")
+}
+if as_lab_user podman image exists "${DB_IMAGE}"; then
+    info "${LAB_USER} has the image already."
+else
+    # Offline mode allows no download at all.
+    [[ "${egress_mode}" == "online" ]] || die "${LAB_USER} has no database image, and offline mode allows no download. Run $0 without --offline first."
+    # Whatever happens from here, the real policy is loaded again at exit.
+    trap 'nft -f "${EGRESS_NFT_FILE}"' EXIT
+    # The download window: HTTPS to any host, inserted before the final drop.
+    sed 's/^\( *\)counter drop comment "lab user: mode online"$/\1tcp dport 443 accept comment "download window"\n&/' "${EGRESS_NFT_FILE}" | nft -f -
+    info "Pulling ${DB_IMAGE} as ${LAB_USER} (several GB, first time only)..."
+    as_lab_user podman pull --quiet "${DB_IMAGE}" >/dev/null
+    # Window closed: the real policy again.
+    nft -f "${EGRESS_NFT_FILE}"
+    trap - EXIT
+    info "Image ready; the download window is closed."
+fi
+
+step "7/7 Repository for '${LAB_USER}' (no GitHub credentials)"
 # Why: the lab user must never hold GitHub credentials, because later in the
 # series an AI agent runs as that user and could read them, and it must be
 # able to update its scripts without the network (offline mode). So root, which already has a clone (the one this

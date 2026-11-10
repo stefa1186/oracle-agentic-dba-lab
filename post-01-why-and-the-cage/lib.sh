@@ -78,7 +78,7 @@ require_lab_user() {
     # however the shell was opened (machinectl shell, su -, ssh, ...).
     local runtime_dir="/run/user/$(id -u)"
     # The directory must exist; if not, linger is off (root setup not done).
-    [[ -d "${runtime_dir}" ]] || die "${runtime_dir} does not exist: linger is not enabled. Run post-01-why-and-the-cage/00_root_setup.sh as root."
+    [[ -d "${runtime_dir}" ]] || die "the lab user's runtime directory (/run/user/<uid>) does not exist: linger is not enabled. Run post-01-why-and-the-cage/00_root_setup.sh as root."
     # Where rootless Podman keeps its runtime state.
     export XDG_RUNTIME_DIR="${runtime_dir}"
     # The user's D-Bus socket, which Podman uses to talk to systemd.

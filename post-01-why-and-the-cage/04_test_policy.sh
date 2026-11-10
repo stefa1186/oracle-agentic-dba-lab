@@ -6,16 +6,19 @@
 # built and destroyed by this script, with no root and no change to the host.
 #
 #   ./04_test_policy.sh                  this repository's 00_root_setup.sh
-#   ./04_test_policy.sh <setup script>   another version of it, e.g. an old one:
-#       ./04_test_policy.sh <(git show 242c97a:post-01-why-and-the-cage/00_root_setup.sh)
+#   ./04_test_policy.sh <setup script>   another version of it, e.g. the first
+#                                        rules, kept in this folder (must FAIL):
+#       ./04_test_policy.sh first_policy_rules.sh
 #
 # How: "unshare" gives this script its own user and network namespace (an
 # empty network stack of its own, like a private PDB with no listener). In it:
 #   - a virtual cable (veth) to a second, private namespace "B"
-#   - in B, two listeners: [2001:db8::2]:443 and :80 (documentation addresses)
-#   - in this namespace, a third one on loopback: [::1]:5555
-# Then each rule file is loaded here, and three connections are tried: 443,
-# 80 and loopback. IPv6 on purpose: a connection over IPv6 first needs
+#   - in B, three documentation addresses: 2001:db8::2 plays the allowed host,
+#     ::3 any other host, ::4 the server's DNS server; listeners on ::2 443
+#     and 80, ::3 443 and 53, ::4 53
+#   - in this namespace, one more on loopback: [::1]:5555
+# Then each rule file is loaded here, and six connections are tried. IPv6 on
+# purpose: a connection over IPv6 first needs
 # neighbour discovery (IPv6's ARP), packets the kernel sends itself, which
 # belong to no user. A rule set that drops them breaks IPv6 for everyone.
 #
@@ -28,10 +31,10 @@
 #      here (the first version of the policy did, for the whole host)
 #
 # Expected, and checked:
-#                         443      80       loopback
-#   lab user, online      works    blocked  works
-#   lab user, offline     blocked  blocked  works
-#   another user          works    works    works      (not the lab's business)
+#                     allowed:443 other:443 allowed:80 dns:53  other:53 loopback
+#   lab user, online  works       blocked   blocked    works   blocked  works
+#   lab user, offline blocked     blocked   blocked    blocked blocked  works
+#   another user      works       works     works      works   works    works
 #
 # Run as the lab user. Changes nothing outside its own namespaces.
 # Needs: unshare, nsenter, ip, nft, python3 (all on the lab since post 01).
@@ -83,6 +86,8 @@ for uid in 0 4242; do
             id() { echo "${uid}"; }
             # The mode, as 00_root_setup.sh would set it from its argument.
             egress_mode="${mode}"
+            # The addresses 00_root_setup.sh would resolve: here, the test's own.
+            allowed4="" allowed6="2001:db8::2" dns4="" dns6="2001:db8::4"
             # Where the block writes the rule file (a test file, not /etc).
             EGRESS_NFT_FILE="${work}/${mode}_${uid}.nft"
             # shellcheck disable=SC1091
@@ -121,6 +126,8 @@ ip addr add 2001:db8::1/64 dev va nodad
 ip link set va up
 nsenter -t "${pid_b}" -n ip link set lo up
 nsenter -t "${pid_b}" -n ip addr add 2001:db8::2/64 dev vb nodad
+nsenter -t "${pid_b}" -n ip addr add 2001:db8::3/64 dev vb nodad
+nsenter -t "${pid_b}" -n ip addr add 2001:db8::4/64 dev vb nodad
 nsenter -t "${pid_b}" -n ip link set vb up
 # A listener that accepts and closes every connection, forever. Background
 # processes get stdin from /dev/null: this script itself is read from stdin.
@@ -139,22 +146,24 @@ while True:
 ' "$1" "$2"
 }
 export -f listen
-# Two listeners in B, one on this namespace's loopback.
-nsenter -t "${pid_b}" -n bash -c "listen 2001:db8::2 443" < /dev/null & pid_443=$!
-nsenter -t "${pid_b}" -n bash -c "listen 2001:db8::2 80" < /dev/null & pid_80=$!
-listen ::1 5555 < /dev/null & pid_lo=$!
+# Five listeners in B, one on this namespace's loopback.
+pids=()
+for l in "2001:db8::2 443" "2001:db8::2 80" "2001:db8::3 443" "2001:db8::3 53" "2001:db8::4 53"; do
+    nsenter -t "${pid_b}" -n bash -c "listen ${l}" < /dev/null & pids+=($!)
+done
+listen ::1 5555 < /dev/null & pids+=($!)
 sleep 1
 # One connection attempt: "works" or "blocked" (4 seconds at most).
 try() {
     if timeout 4 bash -c "</dev/tcp/$1/$2" 2>/dev/null; then echo works; else echo blocked; fi
 }
-# The expected results, per rule file: 443 80 loopback.
+# The expected results, per rule file, in the order of the columns below.
 declare -A want=(
-    [online_0]="works blocked works"
-    [offline_0]="blocked blocked works"
-    [online_4242]="works works works"
-    [offline_4242]="works works works"
-    [loaded_4242]="works works works"
+    [online_0]="works blocked blocked works blocked works"
+    [offline_0]="blocked blocked blocked blocked blocked works"
+    [online_4242]="works works works works works works"
+    [offline_4242]="works works works works works works"
+    [loaded_4242]="works works works works works works"
 )
 # Readable names for the rule files.
 declare -A label=(
@@ -165,20 +174,24 @@ declare -A label=(
     [loaded_4242]="loaded,  another user"
 )
 failed=0
-printf '    %-23s %-8s %-8s %-9s %s\n' "RULES" "443" "80" "LOOPBACK" "RESULT"
+# One row per rule file: what each connection did, then PASS or FAIL.
+fmt='    %-22s %-11s %-9s %-10s %-7s %-8s %-8s %s\n'
+# shellcheck disable=SC2059
+printf "${fmt}" "RULES" "ALLOWED:443" "OTHER:443" "ALLOWED:80" "DNS:53" "OTHER:53" "LOOPBACK" "RESULT"
 for f in online_0 offline_0 online_4242 offline_4242 loaded_4242; do
     # Load this rule file alone.
     "${NFT}" flush ruleset
     "${NFT}" -f "${work}/${f}.nft"
-    # Forget B's link-layer address, so the kernel must ask for it again.
-    ip -6 neigh del 2001:db8::2 dev va 2>/dev/null || true
-    got="$(try 2001:db8::2 443) $(try 2001:db8::2 80) $(try ::1 5555)"
+    # Forget B's link-layer addresses, so the kernel must ask for them again.
+    ip -6 neigh flush dev va 2>/dev/null || true
+    got="$(try 2001:db8::2 443) $(try 2001:db8::3 443) $(try 2001:db8::2 80) $(try 2001:db8::4 53) $(try 2001:db8::3 53) $(try ::1 5555)"
     if [[ "${got}" == "${want[${f}]}" ]]; then result="PASS"; else result="FAIL (expected: ${want[${f}]})"; failed=1; fi
-    read -r r443 r80 rlo <<< "${got}"
-    printf '    %-23s %-8s %-8s %-9s %s\n' "${label[${f}]}" "${r443}" "${r80}" "${rlo}" "${result}"
+    # The six results as six columns.
+    # shellcheck disable=SC2059,SC2086
+    printf "${fmt}" "${label[${f}]}" ${got} "${result}"
 done
 # Stop the listeners and namespace B.
-kill "${pid_443}" "${pid_80}" "${pid_lo}" "${pid_b}" 2>/dev/null || true
+kill "${pids[@]}" "${pid_b}" 2>/dev/null || true
 wait 2>/dev/null || true
 exit "${failed}"
 NS
