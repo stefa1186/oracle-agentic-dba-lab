@@ -175,5 +175,5 @@ them. On this dual-stack server, IPv6 stopped working for the whole host,
 root included. Post 12 found it (its model downloads went over IPv6);
 `03_verify.sh` now tests HTTPS over IPv6 too, when the host has IPv6, and
 `04_test_policy.sh` tests the rules themselves, in a throwaway network: the
-current rules pass, the first version fails (run it with
-`<(git show 242c97a:post-01-why-and-the-cage/00_root_setup.sh)` as argument).
+current rules pass. The first version failed it; it is no longer in the
+repository history.

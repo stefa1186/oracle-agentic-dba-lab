@@ -6,8 +6,8 @@
 # built and destroyed by this script, with no root and no change to the host.
 #
 #   ./04_test_policy.sh                  this repository's 00_root_setup.sh
-#   ./04_test_policy.sh <setup script>   another version of it, e.g. an old one:
-#       ./04_test_policy.sh <(git show 242c97a:post-01-why-and-the-cage/00_root_setup.sh)
+#   ./04_test_policy.sh <setup script>   another version of it, e.g. an old copy:
+#       ./04_test_policy.sh /path/to/old/00_root_setup.sh
 #
 # How: "unshare" gives this script its own user and network namespace (an
 # empty network stack of its own, like a private PDB with no listener). In it:
