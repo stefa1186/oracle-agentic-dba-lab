@@ -58,8 +58,8 @@ cd ~/oracle-agentic-dba-lab/agent-harness
 
 ### The tools SQLcl publishes
 
-SQLcl 26.x publishes ten MCP tools, more than Oracle's documentation lists,
-and some of them write. The harness shows the agent only a read-oriented
+SQLcl 26.3.1 publishes ten MCP tools (the 26.2 documentation lists six; the
+26.3 documentation lists all ten), and some of them write. The harness shows the agent only a read-oriented
 subset by default:
 
 | Tool | Agent sees it | Why |
@@ -104,8 +104,10 @@ The models compared are the ones in `agent-harness/models.txt`.
   - SQLcl's `connect` result tells the model AUTOCOMMIT is ON, and contains
     instructions to the model about what to summarise: tool output can steer
     the model (see post 09).
-  - No `DBTOOLS$*` table was created in FREEPDB1: `AI_AGENT` has no CREATE
-    TABLE privilege or quota, and SQLcl left no MCP log in the database.
+  - No `DBTOOLS$*` table exists in FREEPDB1, and SQLcl doesn't create one:
+    retested on 2026-11-13 with CREATE TABLE and a quota granted to
+    `AI_AGENT`, still no table. SQLcl only writes to `DBTOOLS$MCP_LOG` if
+    it already exists in the agent's own schema.
   - `UNIFIED_AUDIT_TRAIL` had **no rows** for `AI_AGENT` (default policies):
     not the logons, not the queries. Post 04 adds the audit policy.
   - `V$SESSION` during a run (`06_watch_agent_sessions.sh --once`):
