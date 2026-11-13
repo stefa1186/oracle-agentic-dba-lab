@@ -4,9 +4,8 @@ Connects an AI agent to the lab database through the **SQLcl MCP server**,
 with the database password kept out of the model's reach and OS commands
 switched off.
 
-Requires: post 01 (lab built, `03_verify.sh` passing). If your root setup is
-older than this post, rerun it once as root: it now also installs Java 21
-and `unzip`, which SQLcl needs.
+Requires: post 01 (lab built, `03_verify.sh` passing). Post 01's root setup
+already installs Java 21 and `unzip`, which SQLcl needs.
 
 ## Scripts (run as `oralab`, in order)
 
