@@ -97,9 +97,11 @@ The models compared are the ones in `agent-harness/models.txt`.
 
 ## Notes
 
-- **Observed in the first run (SQLcl 26.3.1, 2026-11-04):**
-  - The agent ran 12 `sql_run` calls; its own final list had 11 (it merged a
-    repeated query). The harness log, not the agent's summary, is the record.
+- **Observed in the run quoted in the article (SQLcl 26.3.1, 2026-11-13):**
+  - The agent ran 8 `sql_run` calls and listed 8, but two of them (steps 7
+    and 10) were the same DBA_USERS query with the columns reordered, and its
+    list puts each statement on one line. The harness log, not the agent's
+    summary, is the record.
   - SQLcl's `connect` result tells the model AUTOCOMMIT is ON, and contains
     instructions to the model about what to summarise: tool output can steer
     the model (see post 09).
@@ -111,12 +113,12 @@ The models compared are the ones in `agent-harness/models.txt`.
     not the logons, not the queries. Post 04 adds the audit policy.
   - `V$SESSION` during a run (`06_watch_agent_sessions.sh --once`):
     PROGRAM `SQLcl-MCP`; ACTION = the tool being called (`schema_information`,
-    `sql_run`); MODULE was `UNKNOWN-LLM`. SQLcl's tools take a `model`
-    parameter that the model itself is expected to fill in; it didn't.
-    **Fixed in the harness:** it now hides that parameter from the model and
-    fills in the true model ID on every call, so MODULE shows e.g.
-    `nvidia/nemotron-3-ultra-550b-a55b:free`. Every agent session in the
-    database is now attributable to a specific model.
+    `sql_run`); MODULE = the model ID, e.g.
+    `nvidia/nemotron-3-ultra-550b-a55b:free`. SQLcl's tools take a `model`
+    parameter that the model is expected to fill in (default `UNKNOWN-LLM`,
+    see `run_agent.py --show-schemas`). The harness hides that parameter
+    from the model and fills in the true model ID on every call, so every
+    agent session in the database is attributable to a specific model.
 
   The two checks, as `oralab`:
   ```bash
