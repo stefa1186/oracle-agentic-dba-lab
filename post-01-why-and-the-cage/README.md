@@ -52,7 +52,7 @@ or GitHub credentials to update it (see "The repository copy" below).
 machinectl shell oralab@               # log in as the lab user
 cd ~/oracle-agentic-dba-lab/post-01-why-and-the-cage
 ./01_prereqs.sh
-./02_build.sh                           # first run: image download + database creation, 15-30 min
+./02_build.sh                           # first run: image download + database creation, about 5 min on the lab server
 ./03_verify.sh
 ```
 

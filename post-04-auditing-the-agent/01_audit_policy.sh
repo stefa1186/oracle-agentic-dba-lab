@@ -12,7 +12,7 @@
 # (with the model ID the harness fills in), and the audit trail keeps the SQL.
 #
 # Why this and not the other logs:
-#   - SQLcl's MCP log only exists if the agent owns it (and could edit it)
+#   - SQLcl's MCP log lives in the agent's own schema (the agent could edit it)
 #   - the SQL Firewall log misses statements the grants already rejected
 #   - the agent's own summary is not a record (post 02: 8 queries, no answer)
 # Oracle analogy: the redo log of who did what. Written by the database, as

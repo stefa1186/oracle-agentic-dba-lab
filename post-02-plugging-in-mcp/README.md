@@ -93,7 +93,7 @@ The models compared are the ones in `agent-harness/models.txt`.
 | The agent uses tools that write files or metadata | The harness hides `skills_sync`, `annotation_generate`, `sqlcl_run` and `context_retrieve` from the model (`ALLOWED_TOOLS`, safe by default). |
 | The agent changes data | `AI_AGENT` has no DML or DDL privileges. |
 | The agent reads too much | Not yet: SELECT_CATALOG_ROLE is deliberately generous here. Post 03 removes it. |
-| Who did what | Every agent session is visible in V$SESSION (program/module/action set by SQLcl MCP). SQLcl writes an MCP log table, `DBTOOLS$MCP_LOG`, only if that table exists in the agent's own schema. It is deliberately not created: a log the agent owns is a log the agent can edit. Post 04 looks at it and at Unified Auditing. |
+| Who did what | Every agent session is visible in V$SESSION (program/module/action set by SQLcl MCP). Before every tool call SQLcl tries to create an MCP log table, `DBTOOLS$MCP_LOG`, in the agent's own schema, and logs the call there. `AI_AGENT` can't create tables, so the attempt fails silently, on purpose: a log the agent owns is a log the agent can edit. Post 04 looks at it and at Unified Auditing. |
 
 ## Notes
 
@@ -107,10 +107,12 @@ The models compared are the ones in `agent-harness/models.txt`.
   - SQLcl's `connect` result tells the model AUTOCOMMIT is ON, and contains
     instructions to the model about what to summarise: tool output can steer
     the model (see post 09).
-  - No `DBTOOLS$*` table exists in FREEPDB1, and SQLcl doesn't create one:
-    retested on 2026-11-13 with CREATE TABLE and a quota granted to
-    `AI_AGENT`, still no table. SQLcl only writes to `DBTOOLS$MCP_LOG` if
-    it already exists in the agent's own schema.
+  - No `DBTOOLS$*` table exists in FREEPDB1. SQLcl's housekeeping block
+    tries to create `DBTOOLS$MCP_LOG` in the agent's schema before every tool
+    call and swallows the error (ORA-01031). Tested on 2026-11-13: with
+    CREATE TABLE, CREATE SEQUENCE (identity column) and a quota granted to
+    `AI_AGENT`, SQLcl created the table and logged every call (client, model,
+    tool, SQL text). The grants were then revoked and the table dropped.
   - `UNIFIED_AUDIT_TRAIL` had **no rows** for `AI_AGENT` (default policies):
     not the logons, not the queries. Post 04 adds the audit policy.
   - `V$SESSION` during a run (`06_watch_agent_sessions.sh --once`):

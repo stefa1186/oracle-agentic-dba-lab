@@ -9,7 +9,7 @@ Why a new trail: posts 02-03 showed that none of the existing ones will do.
 | Record | Problem (found in posts 02-03) |
 |---|---|
 | The agent's own summary | Not a record: no answer at all after 8 queries, and the run still exited 0 (post 02); no answer at all (post 03) |
-| SQLcl's `DBTOOLS$MCP_LOG` | Only written if the table is in the agent's own schema, so the agent could edit it |
+| SQLcl's `DBTOOLS$MCP_LOG` | Created by SQLcl in the agent's own schema, if the agent may create tables, so the agent could edit it |
 | Default audit policies | Recorded nothing for the agent |
 | SQL Firewall violations | Miss every statement the grants already rejected |
 
