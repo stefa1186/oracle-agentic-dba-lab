@@ -94,11 +94,11 @@ The models compared are the ones in `agent-harness/models.txt`.
 | The agent uses tools that write files or metadata | The harness hides `skills_sync`, `annotation_generate`, `sqlcl_run` and `context_retrieve` from the model (`ALLOWED_TOOLS`, safe by default). |
 | The agent changes data | `AI_AGENT` has no DML or DDL privileges. |
 | The agent reads too much | Not yet: SELECT_CATALOG_ROLE is deliberately generous here. Post 03 removes it. |
-| Who did what | Every agent session is visible in V$SESSION (program/module/action set by SQLcl MCP). SQLcl also keeps an MCP log table, `DBTOOLS$MCP_LOG`; post 04 looks at it and at Unified Auditing. |
+| Who did what | Every agent session is visible in V$SESSION (program/module/action set by SQLcl MCP). SQLcl writes an MCP log table, `DBTOOLS$MCP_LOG`, only if that table exists in the agent's own schema. It is deliberately not created: a log the agent owns is a log the agent can edit. Post 04 looks at it and at Unified Auditing. |
 
 ## Notes
 
-- **Observed in the first run (SQLcl 26.x, 2026-11-04):**
+- **Observed in the first run (SQLcl 26.3.1, 2026-11-04):**
   - The agent ran 12 `sql_run` calls; its own final list had 11 (it merged a
     repeated query). The harness log, not the agent's summary, is the record.
   - SQLcl's `connect` result tells the model AUTOCOMMIT is ON, and contains
