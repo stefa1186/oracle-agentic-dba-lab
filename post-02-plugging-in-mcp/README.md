@@ -98,10 +98,12 @@ The models compared are the ones in `agent-harness/models.txt`.
 ## Notes
 
 - **Observed in the run quoted in the article (SQLcl 26.3.1, 2026-11-13):**
-  - The agent ran 8 `sql_run` calls and listed 8, but two of them (steps 7
-    and 10) were the same DBA_USERS query with the columns reordered, and its
-    list puts each statement on one line. The harness log, not the agent's
-    summary, is the record.
+  - The agent ran 8 `sql_run` calls (steps 7 and 9 the same CDB_USERS query,
+    character for character), had every fact the four questions needed, then
+    stopped: its last reply was 6 tokens with no text. The harness logged an
+    empty final answer as a normal end and exited 0. **Fixed in the harness:**
+    such a run now ends as `empty_answer` with a `[STOPPED: ...]` final
+    answer. The harness log, not the agent's summary, is the record.
   - SQLcl's `connect` result tells the model AUTOCOMMIT is ON, and contains
     instructions to the model about what to summarise: tool output can steer
     the model (see post 09).

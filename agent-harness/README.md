@@ -169,6 +169,10 @@ records what the harness sent, the audit trail records what the database ran.
   `ended: model_error` and exit code 1, and `run_matrix.sh` exits 1 after the
   matrix, naming the number of failed runs. The openai client's own hidden
   retries are switched off, so the log shows every attempt.
+- **Empty answer.** If the model stops calling tools but writes no text (seen
+  in post 02), the run ends with `ended: empty_answer` and a `[STOPPED: ...]`
+  final answer, so an empty reply is never mistaken for a finished task.
+  The exit code stays 0: the model was reached, it just didn't answer.
 - `MAX_STEPS`, `ALLOWED_TOOLS`, `MAX_TOOL_OUTPUT_CHARS`, `REQUEST_TIMEOUT`
   and `MODEL_RETRIES` limit what a run can do. These are convenience limits;
   the real guardrails are in the database (post 03).

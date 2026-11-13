@@ -14,7 +14,7 @@
 # Why this and not the other logs:
 #   - SQLcl's MCP log only exists if the agent owns it (and could edit it)
 #   - the SQL Firewall log misses statements the grants already rejected
-#   - the agent's own summary is not a record (post 02: 11 vs 12 statements)
+#   - the agent's own summary is not a record (post 02: 8 queries, no answer)
 # Oracle analogy: the redo log of who did what. Written by the database, as
 # it happens, out of reach of the session it describes.
 #

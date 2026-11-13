@@ -639,8 +639,9 @@ async def run(args: argparse.Namespace, provider: str) -> int:
 
             # How the run ended, recorded in run_end: "answer" (the model stopped on
             # its own), "final_on_limit" (asked for its answer at the limit),
-            # "max_steps" (stopped with no answer) or "model_error" (the model
-            # could not be reached, after every retry).
+            # "max_steps" (stopped with no answer), "model_error" (the model
+            # could not be reached, after every retry) or "empty_answer" (it
+            # stopped calling tools but wrote no text).
             ended = "answer"
 
             # Out of steps, and asked to: one last call with no tools, so the model
@@ -688,6 +689,12 @@ async def run(args: argparse.Namespace, provider: str) -> int:
             elif final_answer is None:
                 final_answer = f"[STOPPED: reached MAX_STEPS={max_steps} without a final answer]"
                 ended = "max_steps"
+            # The model stopped calling tools but wrote nothing (seen in post 02:
+            # a reply of a few tokens with no text). That is not an answer: say so,
+            # instead of logging an empty one as if the task were done.
+            elif not final_answer.strip():
+                final_answer = f"[STOPPED: the model's last reply (step {step}) was empty: no final answer]"
+                ended = "empty_answer"
 
             # Log the end of the run with token totals for cost comparison.
             log.event("run_end", steps=step, prompt_tokens_total=total_in, completion_tokens_total=total_out,
