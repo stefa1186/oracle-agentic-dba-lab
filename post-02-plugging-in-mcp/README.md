@@ -12,6 +12,7 @@ already installs Java 21 and `unzip`, which SQLcl needs.
 | Script | Purpose |
 |---|---|
 | `env.example` | Settings: SQLcl download and checksum, agent user name, connection name, restrict level |
+| `models_compare.txt` | The five other models of the comparison (2 free, 3 paid), for `run_matrix.sh -m` |
 | `lib.sh` | Reuses post 01's helpers and adds the post 02 settings (not run directly) |
 | `01_install_sqlcl.sh` | Installs SQLcl in `~/opt/sqlcl` from a cached, checksummed download; links `~/.local/bin/sql` |
 | `02_create_agent_user.sh` | Creates `AI_AGENT` in FREEPDB1: CREATE SESSION + SELECT_CATALOG_ROLE |
@@ -97,13 +98,32 @@ The models compared are the ones in `agent-harness/models.txt`.
 
 ## Notes
 
-- **Observed in the run quoted in the article (SQLcl 26.3.1, 2026-11-13):**
-  - The agent ran 8 `sql_run` calls (steps 7 and 9 the same CDB_USERS query,
-    character for character), had every fact the four questions needed, then
-    stopped: its last reply was 6 tokens with no text. The harness logged an
-    empty final answer as a normal end and exited 0. **Fixed in the harness:**
-    such a run now ends as `empty_answer` with a `[STOPPED: ...]` final
-    answer. The harness log, not the agent's summary, is the record.
+- **Observed in the runs quoted in the article (SQLcl 26.3.1, 2026-11-14):**
+  five runs of `05_prompt.md` with `nvidia/nemotron-3-ultra-550b-a55b:free`
+  (`output/post-02-plugging-in-mcp/20261114T220721Z`, the run quoted, and
+  `20261114T221301Z`, four repeats with `run_matrix.sh -r 4`).
+  - Every run answered all four questions, and every run's own list of
+    statements matched the harness log (9/9, 10/10, 10/10, 11/11, 10/10).
+  - 4 of 5 runs asked DBA_USERS for the same non-Oracle-maintained users a
+    second time (once with one column less, three times with CREATED added).
+  - 3 of 5 runs misread a result: a query on owners that aren't
+    Oracle-maintained users returned PUBLIC's 13,555 synonyms (PUBLIC isn't in
+    DBA_USERS), and the answer called them "the only non-Oracle objects".
+    All 13,555 are `ORACLE_MAINTAINED = 'Y'`. One more run called PUBLIC a
+    non-Oracle-maintained owner but its synonyms "standard Oracle catalog
+    synonyms"; one didn't count PUBLIC.
+  - Model comparison, 5 runs each with `models_compare.txt`
+    (`output/post-02-plugging-in-mcp/20261114T222623Z`):
+    `google/gemma-4-31b-it:free` 5x `model_error` (rate-limited upstream,
+    429/504); `baidu/ernie-5.5-flash-preview:free` 5x `max_steps`, no answer
+    (18 to 57 queries per run); `anthropic/claude-haiku-5.5`,
+    `openai/gpt-6.1-terra` and `google/gemini-4-hydrogen` answered 5x each,
+    never repeated a question and never misread the PUBLIC synonyms. The
+    repeated question and the misread are habits of the Nemotron model.
+  - Earlier, on 2026-11-13, one run with the same model ended with an empty
+    last reply (6 tokens, no text), which the harness then logged as a normal
+    end. The harness now ends such a run as `empty_answer` with a
+    `[STOPPED: ...]` final answer. Not seen again in eight later runs.
   - SQLcl's `connect` result tells the model AUTOCOMMIT is ON, and contains
     instructions to the model about what to summarise: tool output can steer
     the model (see post 09).
@@ -113,11 +133,13 @@ The models compared are the ones in `agent-harness/models.txt`.
     CREATE TABLE, CREATE SEQUENCE (identity column) and a quota granted to
     `AI_AGENT`, SQLcl created the table and logged every call (client, model,
     tool, SQL text). The grants were then revoked and the table dropped.
-  - `UNIFIED_AUDIT_TRAIL` had **no rows** for `AI_AGENT` (default policies):
-    not the logons, not the queries. Post 04 adds the audit policy.
+  - `UNIFIED_AUDIT_TRAIL` has **one row** for `AI_AGENT` (default policies):
+    a failed logon (ORA-01017) from a test on 2026-11-13. `ORA_LOGIN_LOGOUT`
+    records failed logons only, so the five runs' logons and queries left
+    nothing. Post 04 adds the audit policy.
   - `V$SESSION` during a run (`06_watch_agent_sessions.sh --once`):
-    PROGRAM `SQLcl-MCP`; ACTION = the tool being called (`schema_information`,
-    `sql_run`); MODULE = the model ID, e.g.
+    PROGRAM `SQLcl-MCP`; ACTION = the tool being called (`connect`,
+    `schema_information`, `sql_run`); MODULE = the model ID, e.g.
     `nvidia/nemotron-3-ultra-550b-a55b:free`. SQLcl's tools take a `model`
     parameter that the model is expected to fill in (default `UNKNOWN-LLM`,
     see `run_agent.py --show-schemas`). The harness hides that parameter
