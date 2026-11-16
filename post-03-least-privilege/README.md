@@ -85,18 +85,24 @@ cd ../post-03-least-privilege
   with literals replaced by `?`, so it approves a statement's *shape*; what a
   dynamic-SQL string inside an approved block does is limited by the grants,
   not by the firewall. (To be tested deliberately in post 09.)
-- **The agent run (`05_prompt.md`, firewall enforcing) tried a workaround.**
-  Asked for every user, it tried `ALL_USERS` (granted to PUBLIC, so the
-  grants allow it), plus `USER_TABLES`, `USER_OBJECTS` and `SELECT 1 FROM
-  DUAL`. All were stopped by the firewall (`ORA-47605`). The transcript
-  confirms it tried `DBA_USERS` first (stopped by the grants, `ORA-00942`). The two layers
-  complement each other: grants stopped `DBA_USERS`, the firewall stopped
-  what PUBLIC grants would have allowed.
-- **The agent never reported that it was blocked.** Although the prompt
-  asked it to say what failed, it retried (17 `sql_run` calls, `ALL_USERS`
-  four times, 31 firewall violations including SQLcl's helper) and stopped
-  only at the harness's `MAX_STEPS=20`, with no final answer (95,660 tokens
-  in, 1,585 out). The limit that ends a loop must live outside the agent.
+- **The agent run (`05_prompt.md`, firewall enforcing) tried workarounds.**
+  Test run of 2026-11-16, Nemotron run 5: `DBA_USERS` first (stopped by the
+  grants, `ORA-00942`), then `ALL_USERS` with a column it doesn't have
+  (`ORA-00904`), then `USER_USERS`, `SESSION_PRIVS`, `USER_TABLES`,
+  `USER_OBJECTS` and `SELECT 1 FROM DUAL`: all stopped by the firewall
+  (`ORA-47605`). The two layers complement each other.
+- **The firewall approves shapes.** In the same run,
+  `SELECT sys_context('USERENV','CURRENT_USER') FROM dual` succeeded: SQLcl's
+  own `SYS_CONTEXT` lookup put that shape on the allow-list. SQLcl also adds
+  a comment naming the model to every statement; the firewall ignores it.
+- **Most free-model runs never reported that they were blocked.** Although
+  the prompt asked to say what failed, Nemotron retried (8-17 `sql_run`
+  calls) and stopped only at the harness's `MAX_STEPS=20` in 5 of 5 runs,
+  with no final answer (about 95,000 tokens in each). With
+  `models_compare.txt` (5 runs each): Ernie answered 2 of 5, Gemma hit
+  provider errors in 5 of 5, and Claude Haiku 5.5, GPT-6.1 Terra and
+  Gemini 4 Hydrogen answered 5 of 5, naming `ORA-00942` and `ORA-47605`.
+  The limit that ends a loop must live outside the agent.
 - **The firewall's violation log is not an audit trail.** Statements
   rejected by privilege checks (`DBA_USERS`) never reach the firewall, so
   they are not in `DBA_SQL_FIREWALL_VIOLATIONS`. Post 04 adds Unified Auditing.
