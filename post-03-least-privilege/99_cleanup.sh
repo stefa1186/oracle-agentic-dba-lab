@@ -3,7 +3,7 @@
 # 99_cleanup.sh
 #
 # Undoes post 03 and puts the agent's account back in its post 02 state:
-#   1. SQL Firewall: allow-list, capture and logs for the agent removed
+#   1. SQL Firewall: allow-list, capture and logs for the agent removed, firewall disabled
 #   2. the agent back on the DEFAULT profile; role and profile dropped
 #   3. post 02's grants restored (CREATE SESSION + SELECT_CATALOG_ROLE), by
 #      rerunning post 02's 02_create_agent_user.sh (same password)

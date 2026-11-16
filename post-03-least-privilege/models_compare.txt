@@ -1,0 +1,14 @@
+# Models used for the comparison in post 03 ("Is it the model?").
+# Same format as agent-harness/models.txt: <provider> <model-id>, one per line.
+# Run it, as oralab, from agent-harness (5 runs per model):
+#   ./run_matrix.sh -r 5 -m ../post-03-least-privilege/models_compare.txt ../post-03-least-privilege/05_prompt.md
+# The paid models are billed to the OpenRouter key in .env (a few cents per run).
+
+# Free tiers (may be rate-limited upstream; such runs end as model_error).
+openrouter google/gemma-4-31b-it:free
+openrouter baidu/ernie-5.5-flash-preview:free
+
+# Paid.
+openrouter anthropic/claude-haiku-5.5
+openrouter openai/gpt-6.1-terra
+openrouter google/gemini-4-hydrogen

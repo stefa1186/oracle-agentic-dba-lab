@@ -12,7 +12,7 @@
 #   ./04_sql_firewall.sh enforce   block violations again
 #   ./04_sql_firewall.sh off       stop applying the allow-list (kept for later)
 #   ./04_sql_firewall.sh status    show the state, the allowed SQL, recent violations
-#   ./04_sql_firewall.sh remove    drop the allow-list, capture and logs
+#   ./04_sql_firewall.sh remove    drop the allow-list, capture and logs; disable SQL Firewall
 #
 # Deterministic: "capture" always starts from scratch (old allow-list and
 # capture dropped) and learns ONLY from approved_queries.sql, replayed through
@@ -177,9 +177,11 @@ begin
     begin dbms_sql_firewall.drop_capture(username => '${AGENT_DB_USER}');       exception when others then null; end;
     -- purge_log(username, purge before timestamp (null = everything), log type), positional as documented.
     begin dbms_sql_firewall.purge_log('${AGENT_DB_USER}', null, dbms_sql_firewall.all_logs); exception when others then null; end;
+    -- Disable SQL Firewall itself too, as it was before post 03 ('capture' enables it again).
+    begin dbms_sql_firewall.disable; exception when others then null; end;
 end;
 /" >/dev/null
-        info "Removed. (SQL Firewall itself stays enabled; it has no effect without an allow-list.)"
+        info "Removed, and SQL Firewall disabled (as before post 03)."
         ;;
     *)
         die "usage: $0 capture|observe|enforce|off|status|remove"
