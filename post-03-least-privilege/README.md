@@ -5,8 +5,10 @@ Takes the agent's account from post 02's "deliberately a little generous"
 
 - a **role** with SELECT on exactly the views listed in `granted_views.txt`
 - a **profile** limiting sessions, CPU and reads per call, idle and connect time
-- **SQL Firewall**: the database itself rejects any SQL that isn't on an
-  allow-list, with ORA-47605, whatever the prompt says
+
+SQL Firewall (`04_sql_firewall.sh`) is here as an **optional** extra and is
+not used in the article: a statement allow-list fits an application with
+fixed SQL, not an agent that writes its own SQL for every question.
 
 Requires: posts 01 and 02 (database, SQLcl, `AI_AGENT`, saved connection
 `agent`, agent harness set up).
@@ -23,7 +25,7 @@ Requires: posts 01 and 02 (database, SQLcl, `AI_AGENT`, saved connection
 | `privilege_tests.sql` | What must work and what must fail, with expected outcomes |
 | `03_test_privileges.sh` | Runs those tests through SQLcl MCP as the agent, no model: PASS/FAIL |
 | `approved_queries.sql` | The SQL the agent is approved to run (the firewall's training set) |
-| `04_sql_firewall.sh capture` | Learns the allow-list from `approved_queries.sql`, then enforces it |
+| `04_sql_firewall.sh capture` | Optional, not in the article. Learns the allow-list from `approved_queries.sql`, then enforces it |
 | `04_sql_firewall.sh observe` / `enforce` / `off` / `status` / `remove` | Log only / block / stop / report / delete |
 | `05_prompt.md` | A task that needs more than the agent is granted |
 | `99_cleanup.sh` | Back to the post 02 state |
@@ -33,19 +35,21 @@ cd ~/oracle-agentic-dba-lab/post-03-least-privilege
 ./01_least_privilege.sh
 ./02_show_privileges.sh
 ./03_test_privileges.sh           # PASS/FAIL, no model involved
-./04_sql_firewall.sh capture      # learn + enforce the allow-list
-./03_test_privileges.sh           # same tests, now with the firewall enforcing
 ```
 
-Then let a real agent try the task in `05_prompt.md`, and see what the
-database did about it:
+Then let real agents try the task in `05_prompt.md` (5 runs, then 5 runs
+each of the models in `models_compare.txt`; the paid ones cost a few cents
+per run), and look at any run step by step:
 
 ```bash
 cd ~/oracle-agentic-dba-lab/agent-harness
-./run_matrix.sh ../post-03-least-privilege/05_prompt.md
-cd ../post-03-least-privilege
-./04_sql_firewall.sh status       # the agent's blocked statements are listed as violations
+./run_matrix.sh -r 5 ../post-03-least-privilege/05_prompt.md
+./run_matrix.sh -r 5 -m ../post-03-least-privilege/models_compare.txt ../post-03-least-privilege/05_prompt.md
+python3 run_summary.py <run folder>
 ```
+
+The article's runs were made with SQL Firewall off. If you tried
+`04_sql_firewall.sh capture` before, run `./04_sql_firewall.sh remove` first.
 
 ## Deterministic by design
 
@@ -68,11 +72,28 @@ cd ../post-03-least-privilege
 | Profile | How much may one call or session consume? | the call or session is ended (ORA-02393 CPU, ORA-02395 reads, ...) |
 | SQL Firewall | Is this exact statement approved? | ORA-47605: SQL Firewall violation |
 
-## Observed on the lab (26ai Free 23.26.3, SQLcl 26.x, 2026-11-04)
+## Observed on the lab (26ai Free 23.26.3, SQLcl 26.3.1, 2026-11-16, firewall off)
 
-- **All 10 tests pass**, with and without the firewall.
-- **Error codes:** reads outside the list fail with `ORA-00942` (the view
-  "does not exist" for the agent); changes fail with `ORA-01031`.
+- **All 10 tests pass.** Reads outside the list fail with `ORA-00942` (the
+  view "does not exist" for the agent); changes fail with `ORA-01031`.
+- **Free models never answered.** Nemotron (`models.txt`): 5 of 5 runs ended
+  at `MAX_STEPS=20` with no final answer, 19 `sql_run` calls each,
+  95,250-190,294 tokens in (run folder `20261116T211902Z`). One run found
+  `DBA_TABLESPACE_USAGE_METRICS` at step 20, then hit the limit. Ernie: 5 of
+  5 at `MAX_STEPS`. Gemma: provider errors in 5 of 5.
+- **Paid models answered and named the errors** (`20261116T212247Z`):
+  Claude Haiku 5.5 5 of 5, GPT-6.1 Terra 5 of 5, Gemini 4 Hydrogen 4 of 5
+  (one empty answer). Every answer named `ORA-00942`. GPT and Gemini answered
+  question 3 from `DBA_TABLESPACE_USAGE_METRICS` (5 and 4 runs); Haiku never
+  found that view and asked for `SELECT_CATALOG_ROLE` instead.
+- **The profile never fired.** Twenty cheap queries are not a runaway query;
+  only the harness's step limit ends a loop.
+- **Why there is no `DBTOOLS$MCP_LOG`:** SQLcl writes its MCP log only if
+  that table exists in the connected user's own schema. A log owned by the
+  agent could be edited by the agent; post 04 uses Unified Auditing instead.
+
+## Optional: SQL Firewall (not in the article; earlier runs, 2026-11-04 to 2026-11-16)
+
 - **The layers act in order.** With the firewall enforcing, `CREATE TABLE`
   and `GRANT DBA` fail with `ORA-47605`, but `DBA_USERS`/`V$SESSION` still
   give `ORA-00942` and `ALTER SYSTEM` still gives `ORA-01031`: name
@@ -112,9 +133,6 @@ cd ../post-03-least-privilege
   It is not on the allow-list, and should not be: approving it would let any
   statement through an approved shape. The cost is less precise error
   positions for the agent.
-- **Why there is no `DBTOOLS$MCP_LOG`:** SQLcl writes its MCP log only if
-  that table exists in the connected user's own schema. A log owned by the
-  agent could be edited by the agent; post 04 uses Unified Auditing instead.
 
 ## Things to watch
 
