@@ -3,9 +3,9 @@
 # 01_guardrail_checks.sh
 #
 # Reruns every check in this series that involves NO model, in one go, and
-# prints one line per check: the cage (post 01), OS commands (02), grants and
-# SQL Firewall (03), the audit trail's tamper resistance and its FETCH FIRST
-# blind spot (04), and the firewall bypass (09). Deterministic: the same lab
+# prints one line per check: the cage (post 01), OS commands (02), grants
+# (03), and the audit trail's tamper resistance and its FETCH FIRST blind
+# spot (04). Deterministic: the same lab
 # gives the same lines, run after run.
 #
 # Each check is the post's own script, run unchanged; its full output goes to
@@ -18,8 +18,7 @@
 # of trusting that last quarter's report still holds.
 #
 # Run as the lab user, on the lab's resting state (every post's 99_cleanup.sh
-# done: post 03's role, the firewall enforcing, post 04's audit policy on).
-# Leaves the SQL Firewall enforcing.
+# done: post 03's role, post 04's audit policy on).
 # =============================================================================
 
 # Stop on unset variables and pipeline failures. Not -e: one failing check
@@ -72,19 +71,12 @@ run_check() {
 
 run_check "The cage: isolation, sudo, outbound policy" post-01-why-and-the-cage 03_verify.sh 'passed, .* failed'
 run_check "SQLcl refuses OS commands at -R 4"          post-02-plugging-in-mcp 04_check_restrict.sh '^ *(PASS|FAIL):|BLOCKED|RAN'
-run_check "Grants and SQL Firewall: 10 statements"     post-03-least-privilege 03_test_privileges.sh '^ *(PASS|FAIL):'
+run_check "Grants: 10 statements"                      post-03-least-privilege 03_test_privileges.sh '^ *(PASS|FAIL):'
 run_check "The agent cannot touch its audit trail"     post-04-auditing-the-agent 05_test_tamper.sh '^ *(PASS|FAIL|CHECK)'
 run_check "FETCH FIRST and the audit policy"           post-04-auditing-the-agent 06_test_fetch_first.sh '^ *(PASS|FINDING|CHECK)'
-run_check "Firewall bypass through SQLcl's own block"  post-09-breaking-it 06_firewall_bypass.sh 'the sleep RAN|Case 2'
-
-# Post 09's bypass test leaves the firewall in observe mode: back to enforcing,
-# the lab's resting state.
-"${REPO_DIR}/post-03-least-privilege/04_sql_firewall.sh" enforce >/dev/null 2>&1 \
-    || warn "could not set the SQL Firewall back to enforcing: run post-03-least-privilege/04_sql_firewall.sh enforce"
 
 step "Summary"
 printf '%-46s %-28s %4s  %s\n' "CHECK" "POST" "EXIT" "ITS OWN RESULT LINE"
 printf '%s\n' "${summary[@]}"
 echo
 info "Full output: ${FULL}"
-info "SQL Firewall: enforcing again."

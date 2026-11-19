@@ -7,8 +7,7 @@
 #      agent's role goes with it), and revokes DBA from the agent's user in
 #      case any attack ever got it (it shouldn't: the check is a safety net)
 #   2. rebuilds the agent's role from post 03's granted_views.txt alone
-#   3. puts SQL Firewall back to enforcing
-# The evidence (runs, audit and firewall exports, bypass results) is kept.
+# The evidence (runs, audit exports) is kept.
 #
 # Run as the lab user. Asks for confirmation unless --yes is given.
 # Safe to rerun.
@@ -30,12 +29,12 @@ require_database
 # Confirmation, unless --yes.
 case "${1:-}" in
     --yes) ;;
-    "")    read -r -p "This drops ${INJ_SCHEMA} and puts ${AGENT_DB_USER} back to post 03 with the firewall enforcing. Type 'cleanup' to confirm: " answer
+    "")    read -r -p "This drops ${INJ_SCHEMA} and puts ${AGENT_DB_USER} back to post 03. Type 'cleanup' to confirm: " answer
            [[ "${answer}" == "cleanup" ]] || die "not confirmed; nothing was changed." ;;
     *)     die "usage: $0 [--yes]" ;;
 esac
 
-step "1/3 Drop the ticket queue"
+step "1/2 Drop the ticket queue"
 if ! output="$(db_sqlplus <<SQL
 whenever sqlerror exit failure
 set feedback off heading off pagesize 0
@@ -65,11 +64,8 @@ grep -q CLEANUP_COMPLETE <<< "${output}" || { echo "${output}" >&2; die "unexpec
 info "Dropped (where present): ${INJ_SCHEMA}. ${AGENT_DB_USER} holds directly:"
 grep '^DIRECT ' <<< "${output}" | sed 's/^DIRECT /      /'
 
-step "2/3 The agent's role back to post 03"
+step "2/2 The agent's role back to post 03"
 env -u EXTRA_VIEW_FILES "${POST03_DIR}/01_least_privilege.sh"
-
-step "3/3 SQL Firewall back to enforcing"
-"${POST03_DIR}/04_sql_firewall.sh" enforce
 
 step "Done"
 info "Evidence kept in ${POST09_OUT}."

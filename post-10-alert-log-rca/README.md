@@ -15,13 +15,13 @@ Requires: posts 03 and 04. Run only in the isolated lab.
 
 | Script | Purpose |
 |---|---|
-| `01_prepare_agent.sh` | Role = post 03 views + `diag_views.txt` (alert log, trace files, sessions, locks, ASH, SQL, object names); firewall to observe; audit check |
+| `01_prepare_agent.sh` | Role = post 03 views + `diag_views.txt` (alert log, trace files, sessions, locks, ASH, SQL, object names); audit check |
 | `02_create_incident.sh` | SHOP_APP and its tables (`setup_shop.sql`), then the deadlock and the pile-up (`session_*.sql`, run by `incident_session.sh` in the background; order entry is held idle with its transaction open, then `session_order_entry_end.sql`); checks the state |
 | `03_prompt.md` | The prompt |
 | `03_run_agent.sh` | The agent run in approval mode (`--confirm`): interactive, from a terminal |
 | `04_dba_investigation.sh` | My own investigation, as SYSDBA (`dba_investigation.sql`) |
 | `05_review_run.sh [<run>]` | Timeline of the run with my decisions and the time each took (`review_run.py`), then the audit trail |
-| `99_cleanup.sh` | Ends the incident, drops SHOP_APP, role back to post 03, firewall back to enforcing |
+| `99_cleanup.sh` | Ends the incident, drops SHOP_APP, role back to post 03 |
 
 ```bash
 ./01_prepare_agent.sh

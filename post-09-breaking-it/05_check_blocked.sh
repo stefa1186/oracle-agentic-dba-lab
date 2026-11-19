@@ -3,14 +3,14 @@
 # 05_check_blocked.sh
 #
 # What each attack did and what stopped it, from three independent sources
-# (attack_report.py): the harness log, the audit trail, and SQL Firewall's
-# violation log, each in the run's own time window.
+# (attack_report.py): the harness log and the audit trail, each in the run's
+# own time window.
 #
 #   ./05_check_blocked.sh                    the newest run of each attack
 #   ./05_check_blocked.sh <run folder> <a|b|c>   one specific run
 #
 # Run as the lab user. Read-only. The exports are saved next to each run
-# (audit.jsonl, violations.jsonl), so the evidence stays with the run.
+# (audit.jsonl), so the evidence stays with the run.
 # =============================================================================
 
 # Stop on errors (-e), unset variables (-u) and failures inside pipelines.
@@ -34,9 +34,8 @@ report_run() {
     info "Run:    ${run_dir}"
     info "Window: ${start_date} ${start_time} .. ${end_date} ${end_time} UTC (+/- ${AUDIT_WINDOW_MARGIN}s)"
     echo
-    # The two database-side exports, kept with the run.
-    fetch_audit_jsonl      "${start_date} ${start_time}" "${end_date} ${end_time}" > "${run_dir}/audit.jsonl"
-    fetch_violations_jsonl "${start_date} ${start_time}" "${end_date} ${end_time}" > "${run_dir}/violations.jsonl"
+    # The database-side export, kept with the run.
+    fetch_audit_jsonl "${start_date} ${start_time}" "${end_date} ${end_time}" > "${run_dir}/audit.jsonl"
     python3 "${POST09_DIR}/attack_report.py" "${run_dir}" "${attack}"
 }
 
@@ -67,4 +66,4 @@ case $# in
 esac
 
 step "Done"
-info "Next: ./06_firewall_bypass.sh"
+info "To clean up: ./99_cleanup.sh"

@@ -6,11 +6,10 @@
 #   1. its role is rebuilt from post 03's granted_views.txt PLUS this folder's
 #      diag_views.txt: the alert log, trace files, sessions, locks, ASH, SQL
 #      text and object names. Read-only, like everything before
-#   2. SQL Firewall goes to OBSERVE mode: the post 03 allow-list is for a
-#      different job; it logs the investigation's SQL instead of blocking it
-#   3. a check that post 04's audit policy is on, so the run is recorded
+#   2. a check that post 04's audit policy is on, so the run is recorded
 #
-# Run as the lab user. Safe to rerun. 99_cleanup.sh reverts steps 1 and 2.
+# Run as the lab user. Safe to rerun. 99_cleanup.sh reverts step 1.
+# SQL Firewall is not used in this series (see post 03's README).
 # =============================================================================
 
 # Stop on errors (-e), unset variables (-u) and failures inside pipelines.
@@ -26,16 +25,12 @@ require_lab_user
 # The database must be up.
 require_database
 
-step "1/3 Widen the agent's role for the investigation"
+step "1/2 Widen the agent's role for the investigation"
 # Post 03's script does the work: revoke everything, then grant exactly the
 # views in both lists. What was added is always one file you can read.
 EXTRA_VIEW_FILES="${POST10_DIR}/diag_views.txt" "${POST03_DIR}/01_least_privilege.sh"
 
-step "2/3 SQL Firewall to observe mode"
-# Logs every statement outside the post 03 allow-list, blocks none.
-"${POST03_DIR}/04_sql_firewall.sh" observe | grep -A4 '=== Allow-list' | sed 's/^/    /'
-
-step "3/3 Is the agent audited?"
+step "2/2 Is the agent audited?"
 # Post 04's policy must be enabled for the agent, or the run leaves no record.
 enabled="$(db_sqlplus <<SQL | tr -d '[:space:]'
 set heading off feedback off pagesize 0

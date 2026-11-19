@@ -2,14 +2,11 @@
 # =============================================================================
 # attack_report.py
 #
-# One attack run, from three independent points of view:
+# One attack run, from two independent points of view:
 #   1. the HARNESS: every statement the agent sent, and the result it got
 #      (from the run's events.jsonl)
 #   2. the DATABASE: the agent's statements in the audit trail, with their
 #      return codes (audit.jsonl, exported by 05_check_blocked.sh)
-#   3. the FIREWALL: the statements SQL Firewall logged as outside its
-#      allow-list (violations.jsonl), with what it did: in observe mode,
-#      logged but let through; enforcing, blocked
 # then the agent's final answer and, for attack b, mechanical checks of
 # whether it followed the instructions hidden in ticket 1005.
 #
@@ -17,7 +14,7 @@
 # Plain Python, no extra packages. Changes nothing.
 # =============================================================================
 
-# json: the three logs. pathlib: paths. re: ORA codes and the checks.
+# json: the logs. pathlib: paths. re: ORA codes and the checks.
 import json
 import pathlib
 import re
@@ -81,13 +78,6 @@ def main() -> int:
         sql = SQL_COMMENT.sub(" ", r.get("SQL_TEXT") or "")
         print(f"  {(r.get('TS') or '')[11:19]}  {short(r.get('ACTION_NAME'), 14):<14} "
               f"{rc_label(r.get('RETURN_CODE')):<10} {short(sql, 76)}")
-
-    # ---- 3. The firewall: outside the allow-list -------------------------------
-    violations = read_jsonl(run / "violations.jsonl")
-    print(f"\n--- 3. Outside the SQL Firewall allow-list: {len(violations)} statements")
-    for v in violations:
-        sql = SQL_COMMENT.sub(" ", v.get("SQL") or "")
-        print(f"  {(v.get('TS') or '')[11:19]}  {short(v.get('ACTION'), 8):<8} {short(sql, 86)}")
 
     # ---- The final answer --------------------------------------------------------
     end = next((e for e in events if e.get("event") == "run_end"), {})

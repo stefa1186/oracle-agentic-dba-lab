@@ -7,7 +7,6 @@
 #      back) and drops the application user SHOP_APP with its tables
 #   2. rebuilds the agent's role from post 03's granted_views.txt alone
 #      (the diagnostic views are revoked)
-#   3. puts SQL Firewall back to enforcing
 # The evidence (session logs, runs, investigation, audit exports) is kept.
 #
 # Run as the lab user. Asks for confirmation unless --yes is given.
@@ -35,7 +34,7 @@ case "${1:-}" in
     *)     die "usage: $0 [--yes]" ;;
 esac
 
-step "1/3 End the incident and drop ${SHOP_SCHEMA}"
+step "1/2 End the incident and drop ${SHOP_SCHEMA}"
 if ! output="$(run_post10_sql stop_incident.sql)"; then
     echo "${output}" >&2
     die "ending the incident failed."
@@ -62,11 +61,8 @@ fi
 grep -q DROP_COMPLETE <<< "${output}" || { echo "${output}" >&2; die "unexpected output from SQL*Plus."; }
 info "Dropped (where present): ${SHOP_SCHEMA}."
 
-step "2/3 The agent's role back to post 03"
+step "2/2 The agent's role back to post 03"
 env -u EXTRA_VIEW_FILES "${POST03_DIR}/01_least_privilege.sh"
-
-step "3/3 SQL Firewall back to enforcing"
-"${POST03_DIR}/04_sql_firewall.sh" enforce | grep -A4 '=== Allow-list' | sed 's/^/    /'
 
 step "Done"
 info "Evidence kept in ${POST10_OUT}."
