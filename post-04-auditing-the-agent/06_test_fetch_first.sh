@@ -7,16 +7,14 @@
 # post's audit policy, ACTIONS ALL ONLY TOPLEVEL, records nothing for it.
 # Models write that clause all the time.
 #
-#   1. SQL Firewall to observe mode (the test is about auditing; the post 03
-#      allow-list would block the new statements)
-#   2. fetch_first_tests.sql through SQLcl MCP as the agent, without a model:
+#   1. fetch_first_tests.sql through SQLcl MCP as the agent, without a model:
 #      three statements, each without and with FETCH FIRST. For each one:
 #      did the agent's policy record it?
-#   3. the cause: the same replay with a second, TEMPORARY policy without
+#   2. the cause: the same replay with a second, TEMPORARY policy without
 #      "ONLY TOPLEVEL" enabled too, and which policy recorded what
-#   4. the result
-# The temporary policy is dropped and the firewall set back to enforcing at
-# the end, also after an error. Nothing else changes.
+#   3. the result
+# The temporary policy is dropped at the end, also after an error. Nothing
+# else changes.
 #
 # Oracle analogy: checking that a trigger fires for every way a table can be
 # changed, not just the one you thought of.
@@ -43,8 +41,6 @@ require_database
 TEST_POLICY="AI_AGENT_FETCH_TEST"
 # The statements under test.
 TESTS="${POST04_DIR}/fetch_first_tests.sql"
-# The firewall script of post 03 (observe / enforce).
-FIREWALL="${POST04_DIR}/../post-03-least-privilege/04_sql_firewall.sh"
 # One temporary file for the audit export.
 tmp="$(mktemp)"
 
@@ -52,7 +48,7 @@ tmp="$(mktemp)"
 now_utc() { date -u '+%Y-%m-%d %H:%M:%S.%6N'; }
 
 # At exit, whatever happened: drop the temporary policy (ignoring "doesn't
-# exist"), firewall back to enforcing, temporary file removed.
+# exist") and remove the temporary file.
 cleanup() {
     db_sqlplus <<SQL >/dev/null 2>&1
 alter session set container = FREEPDB1;
@@ -62,7 +58,6 @@ begin execute immediate 'drop audit policy ${TEST_POLICY}'; exception when other
 /
 exit
 SQL
-    "${FIREWALL}" enforce >/dev/null 2>&1 || warn "could not set the SQL Firewall back to enforcing: run ${FIREWALL} enforce"
     rm -f "${tmp}"
 }
 trap cleanup EXIT
@@ -79,11 +74,7 @@ per_statement() {
         --agent-policy "${AUDIT_POLICY}" --test-policy "${TEST_POLICY}" "${show[@]}"
 }
 
-step "1/4 SQL Firewall to observe mode, for this test"
-"${FIREWALL}" observe >/dev/null || die "could not set the SQL Firewall to observe mode."
-info "Observe: statements outside the allow-list run, and are logged."
-
-step "2/4 The statements, as ${AGENT_DB_USER} through SQLcl MCP (no model), and the audit trail"
+step "1/3 The statements, as ${AGENT_DB_USER} through SQLcl MCP (no model), and the audit trail"
 started="$(now_utc)"
 replay "${TESTS}"
 replay_rc=$?
@@ -93,7 +84,7 @@ report="$(per_statement "${tmp}" no)"
 grep -v '^MISSING=' <<< "${report}" | sed 's/^/    /'
 missing="$(sed -n 's/^MISSING=//p' <<< "${report}")"
 
-step "3/4 The cause: the same replay with a second policy, WITHOUT ONLY TOPLEVEL"
+step "2/3 The cause: the same replay with a second policy, WITHOUT ONLY TOPLEVEL"
 if ! output="$(db_sqlplus <<SQL
 whenever sqlerror exit failure
 set feedback off heading off pagesize 0
@@ -123,7 +114,7 @@ ended="$(now_utc)"
 fetch_audit_jsonl "${started}" "${ended}" > "${tmp}"
 per_statement "${tmp}" yes | grep -v '^MISSING=' | sed 's/^/    /'
 
-step "4/4 Result"
+step "3/3 Result"
 if (( replay_rc != 0 )); then
     info "CHECK: not every statement ran (see step 2); the audit result says nothing."
     exit 1
