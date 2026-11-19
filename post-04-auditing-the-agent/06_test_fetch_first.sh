@@ -123,6 +123,6 @@ elif [[ "${missing}" == "0" ]]; then
     exit 0
 else
     info "FINDING: ${missing} of the statements ran, and ${AUDIT_POLICY} (ACTIONS ALL ONLY TOPLEVEL) recorded nothing for them."
-    info "A policy without ONLY TOPLEVEL records them, along with SQLcl's recursive SQL (see step 3)."
+    info "A policy without ONLY TOPLEVEL records them, along with SQLcl's recursive SQL (see step 2)."
     exit 1
 fi
