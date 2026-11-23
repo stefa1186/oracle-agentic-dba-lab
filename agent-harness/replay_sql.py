@@ -23,7 +23,7 @@
 #     "-- expect: ORA-00942" line sets the expected outcome of the NEXT statement
 #
 # --json prints one object per statement, with the elapsed seconds and the
-# full tool output as well (post 09 uses both as evidence).
+# full tool output as well (post 04 uses both as evidence).
 #
 # Usage:
 #   .venv/bin/python replay_sql.py --file statements.sql [--connection agent] [--json]
@@ -44,7 +44,7 @@ import pathlib
 import re
 # sys gives the exit code and stderr.
 import sys
-# time measures how long each statement took (post 09 uses it as evidence).
+# time measures how long each statement took (post 04 uses it as evidence).
 import time
 
 # The same .env loader the agent uses.

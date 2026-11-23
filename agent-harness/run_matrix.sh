@@ -15,16 +15,17 @@
 #
 # Examples:
 #   ./run_matrix.sh ../post-05-health-check/04_prompt.md
-#   ./run_matrix.sh -r 3 ../post-07-sql-tuning/04_prompt.md
+#   ./run_matrix.sh -r 3 ../post-06-sql-tuning/04_prompt.md
 #   ./run_matrix.sh -p local ../post-05-health-check/04_prompt.md     (local models only)
-#   ./run_matrix.sh ../post-10-alert-log-rca/03_prompt.md -- --confirm
-#   ./run_matrix.sh -o post-12-offline-local-models ../post-02-plugging-in-mcp/05_prompt.md
+#   ./run_matrix.sh ../post-07-awr-and-incident/incident/03_prompt.md -- --confirm
+#   ./run_matrix.sh -o post-08-team-knowledge-offline/offline ../post-02-plugging-in-mcp/05_prompt.md
 #       (an earlier post's prompt, with the runs filed under a later post)
 #
 # Output (never overwritten; each matrix run gets a new timestamp):
 #   output/<post-folder>/<UTC timestamp>/<provider>_<model>/run-<n>/{events.jsonl,transcript.md}
 #   output/<post-folder>/<UTC timestamp>/summary.tsv   (one line per run)
-# <post-folder> is the prompt file's folder, or OUTPUT_NAME if -o is given.
+# <post-folder> is the prompt file's folder relative to the repository root
+# (e.g. post-04-audit-and-attack/attack), or OUTPUT_NAME if -o is given.
 # =============================================================================
 
 # Fail fast on errors, unset variables and pipeline failures.
@@ -48,7 +49,7 @@ USAGE="Usage: $0 [-r REPEATS] [-m MODELS_FILE] [-p openrouter|local] [-o OUTPUT_
 # Parse the short options -r, -m, -p and -o.
 while getopts ":r:m:p:o:" opt; do
     case "${opt}" in
-        # Number of runs per model (used for consistency tests, e.g. post 07).
+        # Number of runs per model (used for consistency tests, e.g. post 06).
         r) REPEATS="${OPTARG}" ;;
         # Alternative models file.
         m) MODELS_FILE="${OPTARG}" ;;
@@ -127,9 +128,13 @@ done < "${MODELS_FILE}"
 # An empty list would do nothing silently; stop instead.
 [[ ${#MODELS[@]} -gt 0 ]] || { echo "ERROR: no models to run in ${MODELS_FILE}${ONLY_PROVIDER:+ for provider ${ONLY_PROVIDER}}. See ./run_agent.py --list-models" >&2; exit 1; }
 
-# Name of the post folder that owns the prompt, e.g. post-05-health-check.
-# Runs are filed under the prompt's folder name, unless -o names another.
-POST_NAME="${OUTPUT_NAME:-$(basename "$(dirname "${PROMPT_FILE}")")}"
+# The folder that owns the prompt, relative to the repository root, e.g.
+# post-05-health-check or post-04-audit-and-attack/attack. A prompt outside
+# the repository is filed under its folder's name. -o names another folder.
+PROMPT_DIR_REL="$(realpath --relative-to="${HARNESS_DIR}/.." "$(dirname "${PROMPT_FILE}")")"
+# Outside the repository the relative path starts with "..": keep the name only.
+[[ "${PROMPT_DIR_REL}" == ..* ]] && PROMPT_DIR_REL="$(basename "$(dirname "${PROMPT_FILE}")")"
+POST_NAME="${OUTPUT_NAME:-${PROMPT_DIR_REL}}"
 # One timestamp for the whole matrix, so all its runs sit together.
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 # Root folder of this matrix run, as a clean absolute path (readlink -m resolves

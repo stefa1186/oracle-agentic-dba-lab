@@ -13,21 +13,23 @@ here is every script behind them.
 
 There is one folder per post. Each folder contains everything needed to set up
 and run that post's test case, plus a README explaining the order to run them.
+Posts 04, 07 and 08 cover two test cases each: one subfolder per test case,
+each with its own README.
 
 | Folder | Topic | Depends on |
 |---|---|---|
 | `post-01-why-and-the-cage/` | Build and destroy the isolated lab | — |
 | `post-02-plugging-in-mcp/` | Connect an agent through the SQLcl MCP server | 01 |
 | `post-03-least-privilege/` | Agent user, profile, SQL Firewall | 01, 02 |
-| `post-04-auditing-the-agent/` | Unified Auditing vs. the agent's own account | 03 |
-| `post-05-health-check/` | Agent health check vs. a DBA checklist | 03 |
-| `post-06-awr/` | Agent reads an AWR report | 03 |
-| `post-07-sql-tuning/` | Agent vs. SQL Tuning Advisor | 03 |
-| `post-08-vector-search-team-notes/` | Team notes in AI Vector Search | 03 |
-| `post-09-breaking-it/` | Destructive requests and prompt injection | 03, 04 |
-| `post-10-alert-log-rca/` | Alert log triage with human approval | 03 |
-| `post-11-verdict/` | Every model-free guardrail rerun in one command, every agent run in one table, the verdict | all |
-| `post-12-offline-local-models/` | After the verdict: the same agent offline, on local models | 01–04, 08 |
+| `post-04-audit-and-attack/audit/` | Unified Auditing vs. the agent's own account | 03 |
+| `post-04-audit-and-attack/attack/` | Destructive requests and prompt injection | 03, 04 audit |
+| `post-05-health-check/` | Agent health check vs. a DBA checklist | 03, 04 audit |
+| `post-06-sql-tuning/` | Agent vs. SQL Tuning Advisor | 03, 04 audit |
+| `post-07-awr-and-incident/awr/` | Agent reads an AWR report | 03, 04 audit |
+| `post-07-awr-and-incident/incident/` | Alert log triage with human approval | 03, 04 audit |
+| `post-08-team-knowledge-offline/team-notes/` | Team notes in AI Vector Search | 03, 04 audit |
+| `post-08-team-knowledge-offline/offline/` | The same agent offline, on local models | 01–04, 08 team notes |
+| `post-09-verdict/` | Every model-free guardrail rerun in one command, every agent run in one table, the verdict | all |
 | `agent-harness/` | Model-agnostic agent (OpenRouter + SQLcl MCP) used by every test | 01 |
 | `docs/` | Architecture notes and diagrams | — |
 
@@ -59,7 +61,7 @@ See `agent-harness/README.md` for setup.
 1. **Isolation.** The lab runs under a dedicated Linux user (`oralab`), in
    rootless containers on their own network, with ports bound to localhost
    and an outbound policy for that user: DNS and HTTPS only, nothing on the
-   LAN. An offline mode (post 12) cuts it to loopback only. Nothing else on
+   LAN. An offline mode (post 08) cuts it to loopback only. Nothing else on
    the host is touched.
 2. **Non-root.** One setup script runs as root, once. Everything else runs
    as `oralab`, whose sudo rights are two read-only commands.

@@ -94,22 +94,25 @@ Only one provider's models (for example offline, local only):
 ```
 
 An earlier post's prompt, with the runs filed under a later post's folder
-(`-o`, used by post 12):
+(`-o`, used by post 08):
 
 ```bash
-./run_matrix.sh -o post-12-offline-local-models ../post-02-plugging-in-mcp/05_prompt.md
+./run_matrix.sh -o post-08-team-knowledge-offline/offline ../post-02-plugging-in-mcp/05_prompt.md
 ```
 
 Options passed after `--` go to every run, for example human approval before
 each tool call:
 
 ```bash
-./run_matrix.sh ../post-10-alert-log-rca/03_prompt.md -- --confirm
+./run_matrix.sh ../post-07-awr-and-incident/incident/03_prompt.md -- --confirm
 ```
 
 ## Output
 
 Each run writes to its own folder under `output/` (ignored by git):
+`output/<prompt folder>/<UTC timestamp>/<provider>_<model>/run-<n>/`, where
+the prompt folder is relative to the repository root (for example
+`post-04-audit-and-attack/attack`).
 
 - `events.jsonl`: the provider and endpoint, every model call (model and,
   on OpenRouter, the provider that answered, seconds, tokens), every failed
@@ -130,7 +133,7 @@ records what the harness sent, the audit trail records what the database ran.
   limit.
 - **`local`:** the model server listens on `127.0.0.1` only and nothing
   leaves the server. Internet access is needed only to download models.
-  Post 12 proves it: the lab user offline (loopback only), the same tests
+  Post 08 proves it: the lab user offline (loopback only), the same tests
   with local models, and the policy's drop counter before and after.
 - **SQLcl always starts with an explicit restrict level** (`SQLCL_RESTRICT`,
   default 4: no host commands, no scripts). Since SQLcl 26.1.2 the MCP server
@@ -151,9 +154,9 @@ records what the harness sent, the audit trail records what the database ran.
 - **`--attach FILE`** (repeatable): appends a text file to the prompt, between
   `BEGIN/END ATTACHED FILE` markers. `run_start` logs each file's size and
   SHA-256, so the log proves exactly what the model read; the transcript shows
-  the name only. Used in post 06 for the AWR report.
+  the name only. Used in post 07 for the AWR report.
 - **`--allow-tools NONE`**: the model gets no tools at all and can only answer
-  from the prompt (post 06: reading a report, not querying the database).
+  from the prompt (post 07: reading a report, not querying the database).
 - **`--final-on-limit`** (off by default): when a run reaches MAX_STEPS without
   an answer, the harness makes one more model call with no tools, asking for the
   final answer from the results already received. The call is logged as step
@@ -179,6 +182,6 @@ records what the harness sent, the audit trail records what the database ran.
 - **Thinking.** `REASONING_EFFORT` (empty by default: nothing is sent, the
   server decides) is passed as `reasoning_effort` with every model call, and
   recorded in `run_start`. `none` switches a reasoning model's thinking off
-  on servers that accept it, Ollama among them. Post 12 uses it for its local
+  on servers that accept it, Ollama among them. Post 08 uses it for its local
   models: with Ollama's default, a 4B model on a CPU thought for 9,000
   tokens on one step and ran into the 30-minute timeout.

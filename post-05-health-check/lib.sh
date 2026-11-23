@@ -11,8 +11,8 @@
 POST05_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Post 04 helpers (and posts 01-03 through them).
-# shellcheck source=../post-04-auditing-the-agent/lib.sh
-source "${POST05_DIR}/../post-04-auditing-the-agent/lib.sh"
+# shellcheck source=../post-04-audit-and-attack/audit/lib.sh
+source "${POST05_DIR}/../post-04-audit-and-attack/audit/lib.sh"
 
 # Where this post keeps its evidence: the answer key, the checklist output
 # and (in per-run subfolders, written by the harness) the agent runs.
@@ -25,7 +25,7 @@ CHECKLIST_OUT="${POST05_OUT}/checklist.txt"
 # Load posts 01-04 settings, then post 05 settings.
 load_post05_config() {
     # Everything from posts 01-04.
-    load_post04_config
+    load_audit_config
     # Post 05 defaults.
     # shellcheck source=env.example
     source "${POST05_DIR}/env.example"

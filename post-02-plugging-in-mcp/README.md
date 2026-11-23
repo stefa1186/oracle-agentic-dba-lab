@@ -126,7 +126,7 @@ The models compared are the ones in `agent-harness/models.txt`.
     `[STOPPED: ...]` final answer. Not seen again in eight later runs.
   - SQLcl's `connect` result tells the model AUTOCOMMIT is ON, and contains
     instructions to the model about what to summarise: tool output can steer
-    the model (see post 09).
+    the model (see post 04).
   - No `DBTOOLS$*` table exists in FREEPDB1. SQLcl's housekeeping block
     tries to create `DBTOOLS$MCP_LOG` in the agent's schema before every tool
     call and swallows the error (ORA-01031). Tested on 2026-11-13: with

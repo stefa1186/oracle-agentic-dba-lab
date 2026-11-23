@@ -7,7 +7,7 @@
 #
 #   sudo ./00_root_setup.sh            set up (safe to rerun)
 #   sudo ./00_root_setup.sh --offline  the same, but the lab user goes OFFLINE:
-#                                      loopback only, no DNS, no internet (post 12).
+#                                      loopback only, no DNS, no internet (post 08).
 #                                      Rerun without --offline to go back online.
 #   sudo ./00_root_setup.sh --remove   undo everything this script did
 #
@@ -182,7 +182,7 @@ step "4/6 Outbound network policy for '${LAB_USER}'"
 # looks the same, but the kernel's packets are not "another user": that rule
 # didn't match them, and the final drop took them. On a dual-stack host, the
 # neighbour solicitations for the IPv6 gateway were dropped, so IPv6 stopped
-# working for the whole host, root included. Found in post 12.)
+# working for the whole host, root included. Found in post 08.)
 #
 # Rules for the lab user's packets, in order (normal mode):
 #   loopback               -> allowed (agent <-> database, local models)

@@ -66,7 +66,7 @@ for you; after `su - oralab`, run `export XDG_RUNTIME_DIR=/run/user/$(id -u)`.
 
 `oralab` must never hold GitHub credentials: later in the series an AI agent
 runs as `oralab` and could read them. And it must be able to update its
-scripts without the network: in offline mode (post 12) it has none. So `00_root_setup.sh` publishes root's clone as a **read-only mirror**
+scripts without the network: in offline mode (post 08) it has none. So `00_root_setup.sh` publishes root's clone as a **read-only mirror**
 in `/srv/oralab/repo.git`, and `oralab` clones and pulls from that mirror:
 no network, no secrets. `oralab` can read the mirror but cannot change it.
 Oracle analogy: a read-only copy of a schema instead of the production password.
@@ -136,7 +136,7 @@ GRANT ANY PRIVILEGE, the one grant that contains all the others.
   `env.example`, commit, rerun `./02_build.sh`.
 - **Changing the outbound ports** is a root action: edit
   `EGRESS_ALLOWED_TCP_PORTS` and rerun `sudo ./00_root_setup.sh`.
-- **Offline mode (post 12):** `sudo ./00_root_setup.sh --offline` cuts the lab
+- **Offline mode (post 08):** `sudo ./00_root_setup.sh --offline` cuts the lab
   user to loopback only: no DNS, no internet, no LAN. The database and local
   models keep working. Rerun without `--offline` to go back online. The mode
   is whatever the last run wrote, and it survives a reboot.
@@ -172,7 +172,7 @@ The first version started with "accept every other user" instead
 kernel's own packets (IPv6 neighbour discovery, TCP resets, ICMP errors)
 belong to no user, so that rule didn't match them and the final drop took
 them. On this dual-stack server, IPv6 stopped working for the whole host,
-root included. Post 12 found it (its model downloads went over IPv6);
+root included. Post 08 found it (its model downloads went over IPv6);
 `03_verify.sh` now tests HTTPS over IPv6 too, when the host has IPv6, and
 `04_test_policy.sh` tests the rules themselves, in a throwaway network: the
 current rules pass. The first version failed it; it is no longer in the

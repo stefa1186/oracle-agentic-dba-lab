@@ -50,7 +50,7 @@ SQL
 if [[ "${enabled}" == "1" ]]; then
     info "Audit policy ${AUDIT_POLICY} is enabled for ${AGENT_DB_USER}."
 else
-    warn "audit policy ${AUDIT_POLICY} is not enabled for ${AGENT_DB_USER}: run ../post-04-auditing-the-agent/01_audit_policy.sh first."
+    warn "audit policy ${AUDIT_POLICY} is not enabled for ${AGENT_DB_USER}: run ../post-04-audit-and-attack/audit/01_audit_policy.sh first."
 fi
 
 step "Done"

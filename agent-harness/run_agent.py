@@ -126,14 +126,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--temperature", type=float, default=None, help="Sampling temperature (default: TEMPERATURE from .env)")
     # Comma-separated list of MCP tools the agent may use; empty means all published tools.
     p.add_argument("--allow-tools", default=None, help="Comma-separated MCP tool allow-list (default: ALLOWED_TOOLS from .env)")
-    # Files appended to the prompt, e.g. an AWR report the agent must read (post 06).
+    # Files appended to the prompt, e.g. an AWR report the agent must read (post 07).
     # Repeatable. Each is logged in run_start with its size and SHA-256.
     p.add_argument("--attach", action="append", type=pathlib.Path, default=[], help="Append this text file to the prompt (repeatable)")
     # At the step limit, one more model call WITHOUT tools, asking for the final
     # answer from what was already gathered. Off by default: post 03's "it never
     # stopped" stays observable. The extra call is logged and labelled.
     p.add_argument("--final-on-limit", action="store_true", help="At MAX_STEPS, ask once (no tools) for a final answer from the results so far")
-    # Human approval before every tool call (used in post 10).
+    # Human approval before every tool call (used in post 07).
     p.add_argument("--confirm", action="store_true", help="Ask for human approval before every tool call")
     # Print the tool list published by SQLcl MCP and exit, without calling any model.
     p.add_argument("--list-tools", action="store_true", help="List the MCP tools published by SQLcl and exit")
@@ -400,7 +400,7 @@ async def run(args: argparse.Namespace, provider: str) -> int:
                 # Explicit opt-in: no filtering (None means "everything").
                 allowed = None
             elif allow_raw.upper() == "NONE":
-                # No tools at all: the model can only read the prompt and answer (post 06).
+                # No tools at all: the model can only read the prompt and answer (post 07).
                 allowed = set()
             else:
                 # The given list, or the default list when nothing was given.
@@ -721,7 +721,7 @@ def ask_approval(log, step: int, name: str, arguments: dict) -> bool:
 
     Keys typed BEFORE the question appeared are thrown away first: without
     that, a "y" typed ahead (while the model was thinking) approves a call
-    nobody has read yet. Post 10's first run did exactly that."""
+    nobody has read yet. Post 07's first run did exactly that."""
     # Discard typeahead, when stdin is a terminal (termios is Unix-only, as is the lab).
     if sys.stdin.isatty():
         import termios

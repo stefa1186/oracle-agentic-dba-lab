@@ -105,7 +105,7 @@ The article's runs were made with SQL Firewall off. If you tried
   its MCP log that use `EXECUTE IMMEDIATE`). The firewall stores statements
   with literals replaced by `?`, so it approves a statement's *shape*; what a
   dynamic-SQL string inside an approved block does is limited by the grants,
-  not by the firewall. (To be tested deliberately in post 09.)
+  not by the firewall. (To be tested deliberately in post 04.)
 - **The agent run (`05_prompt.md`, firewall enforcing) tried workarounds.**
   Test run of 2026-11-16, Nemotron run 5: `DBA_USERS` first (stopped by the
   grants, `ORA-00942`), then `ALL_USERS` with a column it doesn't have

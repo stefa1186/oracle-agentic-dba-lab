@@ -32,7 +32,7 @@ from pathlib import Path
 #   a PL/SQL block:   "ERROR at line n:", then "ORA-nnnnn: ..."
 # Not an ORA code anywhere: SQLcl's connect message mentions "ORA-17274" in a
 # hint to the model, and query RESULTS can hold ORA codes as data (the alert
-# log's "ORA-00060: Deadlock detected", post 10). Neither is an error.
+# log's "ORA-00060: Deadlock detected", post 07). Neither is an error.
 ORA = re.compile(r"(?:Error report -\s*\n(?:SQL Error: )?|ERROR at line \d+:\s*\n)(ORA-\d{5}):")
 
 

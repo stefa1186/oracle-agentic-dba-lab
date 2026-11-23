@@ -62,7 +62,7 @@ cd ..
   digest. `01_start_ollama.sh` labels the container with a fingerprint of the
   settings and recreates it when `ollama.conf` changes, so the running server
   always matches the file. Pin models by digest too: a tag can be
-  re-published (post 12's `model_pins.txt` shows how).
+  re-published (post 08's `model_pins.txt` shows how).
 - **Memory.** `OLLAMA_NUM_PARALLEL=1` and `OLLAMA_MAX_LOADED_MODELS=1`: one
   request at a time, one model in memory at a time. Predictable, and two
   large models never compete with each other or with the database.

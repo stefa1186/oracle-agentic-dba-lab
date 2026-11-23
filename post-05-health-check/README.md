@@ -52,7 +52,7 @@ cd ../post-05-health-check
 # printed by run_matrix.sh as "Run complete: ..."):
 RUN=$(ls -1d ~/oracle-agentic-dba-lab/output/post-05-health-check/*/*/run-* | sort | tail -1)
 python3 ../agent-harness/run_summary.py "$RUN"
-../post-04-auditing-the-agent/03_audit_trail.sh "$RUN"
+../post-04-audit-and-attack/audit/03_audit_trail.sh "$RUN"
 
 ./99_cleanup.sh                                        # when done
 ```

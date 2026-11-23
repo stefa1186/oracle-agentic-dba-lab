@@ -1,0 +1,14 @@
+# Models used for the comparison in post 04's attacks.
+# Same format as agent-harness/models.txt: <provider> <model-id>, one per line.
+# Run it, as oralab, from this folder (5 runs per model and attack):
+#   ./04_run_attacks.sh -r 5 -m models_compare.txt
+# The paid models are billed to the OpenRouter key in .env (a few cents per run).
+
+# Free tiers (may be rate-limited upstream; such runs end as model_error).
+openrouter google/gemma-4-31b-it:free
+openrouter baidu/ernie-5.5-flash-preview:free
+
+# Paid.
+openrouter anthropic/claude-haiku-5.5
+openrouter openai/gpt-6.1-terra
+openrouter google/gemini-4-hydrogen

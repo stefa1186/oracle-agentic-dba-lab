@@ -148,7 +148,7 @@ check "outbound policy loads at boot" systemctl is-enabled --quiet "${EGRESS_UNI
 check "lab user CAN reach the internet on 443" curl -sS -o /dev/null --max-time 15 https://container-registry.oracle.com
 # The same over IPv6, if this host has IPv6: the policy must not break it.
 # (A first version of the policy dropped the kernel's IPv6 neighbour
-# discovery, and with it IPv6 for the whole host. Found in post 12.)
+# discovery, and with it IPv6 for the whole host. Found in post 08.)
 if [[ -n "$(ip -6 route show default 2>/dev/null)" ]]; then
     check "lab user CAN reach the internet on 443 over IPv6" curl -6 -sS -o /dev/null --max-time 15 https://container-registry.oracle.com
 else
