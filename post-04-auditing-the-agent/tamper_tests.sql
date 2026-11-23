@@ -4,8 +4,7 @@
 --
 -- Run by 05_test_tamper.sh through SQLcl MCP as the agent, without a model.
 -- "-- expect: error" accepts any Oracle error and reports the actual code
--- (ORA-00942, ORA-01031, ORA-06550 ... or ORA-47605 if the SQL Firewall is
--- enforcing).
+-- (ORA-00942, ORA-01031, ORA-06550 ...).
 -- =============================================================================
 
 -- Read the audit trail.
