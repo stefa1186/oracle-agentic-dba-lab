@@ -100,38 +100,7 @@ if found:
 PY
 }
 
-# Write the SQL Firewall violations for the agent's user between two UTC
-# timestamps ("YYYY-MM-DD HH:MM:SS.ffffff"), widened by AUDIT_WINDOW_MARGIN,
-# to stdout: one JSON object per line, built by the database (JSON_OBJECT),
-# as fetch_audit_jsonl does for the audit trail.
-fetch_violations_jsonl() {
-    local start="$1" end="$2" ts_re='^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{6}$'
-    # Only well-formed timestamps go into the SQL.
-    [[ "${start}" =~ ${ts_re} && "${end}" =~ ${ts_re} ]] || die "invalid time window: '${start}' .. '${end}'"
-    db_sqlplus <<SQL
-set feedback off heading off pagesize 0 linesize 32767 trimspool on tab off
-alter session set container = FREEPDB1;
--- Write the firewall's in-memory log entries to disk first, so the list is complete.
-exec dbms_sql_firewall.flush_logs
--- One line per violation: when, why (SQL violation, context violation), what
--- the firewall did (blocked or only logged), and the statement.
-select json_object(
-         'TS'     value to_char(sys_extract_utc(occurred_at), 'YYYY-MM-DD HH24:MI:SS.FF6'),
-         'CAUSE'  value cause,
-         'ACTION' value firewall_action,
-         'SQL'    value dbms_lob.substr(sql_text, 1500, 1)
-         returning varchar2(4000))
-from   dba_sql_firewall_violations
-where  username = '${AGENT_DB_USER}'
-and    sys_extract_utc(occurred_at)
-       between to_timestamp('${start}', 'YYYY-MM-DD HH24:MI:SS.FF6') - numtodsinterval(${AUDIT_WINDOW_MARGIN}, 'SECOND')
-           and to_timestamp('${end}',   'YYYY-MM-DD HH24:MI:SS.FF6') + numtodsinterval(${AUDIT_WINDOW_MARGIN}, 'SECOND')
-order  by occurred_at;
-exit
-SQL
-}
-
-# The current UTC time, in the format the two fetch functions read.
+# The current UTC time, in the format fetch_audit_jsonl reads.
 utc_now() {
     date -u '+%Y-%m-%d %H:%M:%S.%6N'
 }

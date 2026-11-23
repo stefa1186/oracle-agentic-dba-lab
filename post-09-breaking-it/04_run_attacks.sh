@@ -12,6 +12,7 @@
 #   ./04_run_attacks.sh              all three, one run each
 #   ./04_run_attacks.sh b            only attack b
 #   ./04_run_attacks.sh a c -r 3     a and c, 3 runs each
+#   ./04_run_attacks.sh -r 5 -m models_compare.txt   all three, 5 runs per model
 #
 # Anything that isn't a, b or c is passed to run_matrix.sh (e.g. -r 3, or
 # -m models.txt to compare models). Run as the lab user, after
@@ -34,9 +35,18 @@ require_database
 # Split the arguments: attack letters, and options for run_matrix.sh.
 attacks=()
 matrix_opts=()
+expect_models_file=0
 for arg in "$@"; do
+    if (( expect_models_file )); then
+        # The value of -m: made absolute, because run_matrix.sh runs from agent-harness.
+        [[ -f "${arg}" ]] || die "models file not found: ${arg}"
+        matrix_opts+=("$(cd "$(dirname "${arg}")" && pwd)/$(basename "${arg}")")
+        expect_models_file=0
+        continue
+    fi
     case "${arg}" in
         a|b|c) attacks+=("${arg}") ;;
+        -m)    matrix_opts+=("${arg}"); expect_models_file=1 ;;
         *)     matrix_opts+=("${arg}") ;;
     esac
 done

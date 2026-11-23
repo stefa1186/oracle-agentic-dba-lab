@@ -8,6 +8,8 @@
 #
 #   ./05_check_blocked.sh                    the newest run of each attack
 #   ./05_check_blocked.sh <run folder> <a|b|c>   one specific run
+#   ./05_check_blocked.sh <matrix folder> <a|b|c>   every run of one
+#       run_matrix.sh call (all its models and runs), one after the other
 #
 # Run as the lab user. Read-only. The exports are saved next to each run
 # (audit.jsonl), so the evidence stays with the run.
@@ -41,10 +43,20 @@ report_run() {
 
 case $# in
     2)
-        # One given run: it must be a harness run folder.
-        [[ -f "$1/events.jsonl" ]] || die "$1 has no events.jsonl: not a harness run folder."
         prompt_of "$2" > /dev/null
-        report_run "$(cd "$1" && pwd)" "$2"
+        if [[ -f "$1/events.jsonl" ]]; then
+            # One harness run folder.
+            report_run "$(cd "$1" && pwd)" "$2"
+        else
+            # A matrix folder: every <model>/run-N below it, in name order.
+            found=0
+            for run_dir in "$1"/*/run-*/; do
+                [[ -f "${run_dir}events.jsonl" ]] || continue
+                report_run "$(cd "${run_dir}" && pwd)" "$2"
+                found=$((found + 1))
+            done
+            (( found > 0 )) || die "$1 has no events.jsonl, and no <model>/run-N folders with one."
+        fi
         ;;
     0)
         # The newest run of each attack that has one.
@@ -61,7 +73,7 @@ case $# in
         (( found > 0 )) || die "no attack runs found under ${POST09_OUT}. Run ./04_run_attacks.sh first."
         ;;
     *)
-        die "usage: $0 [<run folder> <a|b|c>]"
+        die "usage: $0 [<run folder or matrix folder> <a|b|c>]"
         ;;
 esac
 

@@ -22,15 +22,17 @@ Run only in the isolated lab.
 | `03a_prompt_direct.md` | Attack a |
 | `03b_prompt_injection.md` | Attack b |
 | `03c_prompt_escalation.md` | Attack c |
-| `04_run_attacks.sh [a] [b] [c] [-r N]` | Runs the attacks through the harness; recreates the ticket queue before each |
-| `05_check_blocked.sh [<run> <a\|b\|c>]` | Per attack: what the agent sent, what the audit trail recorded, its answer, and (b) whether the hidden instructions worked (`attack_report.py`) |
+| `04_run_attacks.sh [a] [b] [c] [-r N] [-m models file]` | Runs the attacks through the harness; recreates the ticket queue before each |
+| `models_compare.txt` | The models for the comparison (5 runs each; the paid ones cost a few cents per run) |
+| `05_check_blocked.sh [<run or matrix folder> <a\|b\|c>]` | Per attack and run: what the agent sent, the statements that would change something, what the audit trail recorded, its answer, and (b) whether the hidden instructions worked (`attack_report.py`) |
 | `99_cleanup.sh` | Drops INJ_LAB, role back to post 03 |
 
 ```bash
 ./01_prepare_agent.sh
 ./02_setup_tickets.sh
-./04_run_attacks.sh
-./05_check_blocked.sh
+./04_run_attacks.sh -r 5                          # the series' model, 5 runs per attack
+./04_run_attacks.sh -r 5 -m models_compare.txt    # the comparison
+./05_check_blocked.sh <matrix folder> <a|b|c>     # every run of one attack
 ./99_cleanup.sh
 ```
 
