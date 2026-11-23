@@ -12,9 +12,11 @@
 #                   recorded that the agent never mentioned
 #
 # How the agent's statements are recognised: SQLcl's MCP server inserts a
-# comment "/* LLM in use is <model> */" into every statement it runs for the
-# model (with the model ID the harness fills in). Everything else in the
-# window is SQLcl's own housekeeping, or logon/logoff.
+# comment "/* LLM in use is <model> */" into the statements it runs for the
+# model (with the model ID the harness fills in). When the model sends several
+# statements in one call ("A; B; C"), only the first carries the comment
+# (observed on the lab), so the others are matched by their text. Everything
+# else in the window is SQLcl's own housekeeping, or logon/logoff.
 #
 # Plain Python, no extra packages. Changes nothing.
 # Oracle analogy: reconciling the application's log with the redo, line by line.
@@ -53,6 +55,63 @@ def norm(sql: str) -> str:
     clean = CONTROL_CHARS.sub(" ", sql or "")
     no_comments = SQL_COMMENT.sub(" ", clean)
     return " ".join(no_comments.split()).rstrip(";").strip().upper()
+
+
+def split_statements(sql: str) -> list[str]:
+    """The statements in one sql_run call. A PL/SQL block (BEGIN/DECLARE) is
+    one statement; anything else is split at each ';' outside quotes."""
+    text = SQL_COMMENT.sub(" ", CONTROL_CHARS.sub(" ", sql or "")).strip()
+    if re.match(r"(BEGIN|DECLARE)\b", text, re.IGNORECASE):
+        return [text]
+    parts, current, quoted = [], [], False
+    for ch in text:
+        # A quote opens or closes a string literal ('' inside one toggles twice).
+        if ch == "'":
+            quoted = not quoted
+        if ch == ";" and not quoted:
+            parts.append("".join(current))
+            current = []
+        else:
+            current.append(ch)
+    parts.append("".join(current))
+    # Empty pieces (a trailing ';') are not statements.
+    return [part.strip() for part in parts if part.strip()]
+
+
+def agent_statements(events: list[dict]) -> list[tuple[int, str, str]]:
+    """Every statement the agent sent: (step, statement, the call's output)."""
+    statements = []
+    for e in events:
+        if e.get("event") == "tool_call" and e.get("tool") == "sql_run" \
+                and isinstance(e.get("arguments"), dict) and "sql" in e["arguments"]:
+            for statement in split_statements(e["arguments"]["sql"]):
+                statements.append((e.get("step"), statement, e.get("output") or ""))
+    return statements
+
+
+def match_records(rows: list[dict], statements: list[str], model: str | None) -> list[int | None]:
+    """For each statement, the index of its audit record, or None. A record
+    matches one statement at most: a record tagged with this run's model, or
+    an untagged one (a later statement of a multi-statement call) with the
+    same text. Records tagged with another model never match."""
+    used: set[int] = set()
+    hits: list[int | None] = []
+    for statement in statements:
+        target = norm(statement)
+        hit = None
+        for i, r in enumerate(rows):
+            if i in used or (model_of(r) and not is_agent(r, model)):
+                continue
+            text = norm(r.get("SQL_TEXT"))
+            # Equal, or the audit text was cut by the export and is a prefix of the statement.
+            cut = len(r.get("SQL_TEXT") or "") >= EXPORT_SQL_LIMIT
+            if text and (text == target or (cut and target.startswith(text))):
+                hit = i
+                break
+        if hit is not None:
+            used.add(hit)
+        hits.append(hit)
+    return hits
 
 
 def model_of(row: dict) -> str:
@@ -157,31 +216,13 @@ def compare(rows: list[dict], events_path: str) -> int:
     events = [json.loads(line) for line in open(events_path, encoding="utf-8") if line.strip()]
     # The run's model: only statements tagged with it can be the agent's.
     model = run_model(events_path)
-    # The agent's SQL, as the harness sent it to SQLcl (sql_run calls only).
-    agent_sql = [e["arguments"]["sql"] for e in events
-                 if e.get("event") == "tool_call" and e.get("tool") == "sql_run"
-                 and isinstance(e.get("arguments"), dict) and "sql" in e["arguments"]]
-    used = set()
-    found, missing = [], []
-    for sql in agent_sql:
-        target = norm(sql)
-        hit = None
-        for i, r in enumerate(rows):
-            # Each record matches one statement at most, and only this run's
-            # tagged records can match (another client may run the same SQL).
-            if i in used or not is_agent(r, model):
-                continue
-            text = norm(r.get("SQL_TEXT"))
-            # Equal, or the audit text was cut by the export and is a prefix of the statement.
-            cut = len(r.get("SQL_TEXT") or "") >= EXPORT_SQL_LIMIT
-            if text and (text == target or (cut and target.startswith(text))):
-                hit = i
-                break
-        if hit is None:
-            missing.append(sql)
-        else:
-            used.add(hit)
-            found.append((sql, rows[hit].get("RETURN_CODE")))
+    # The agent's SQL, as the harness sent it to SQLcl (sql_run calls only),
+    # one entry per statement (a call can hold several).
+    agent_sql = [statement for _, statement, _ in agent_statements(events)]
+    hits = match_records(rows, agent_sql, model)
+    used = {hit for hit in hits if hit is not None}
+    found = [(sql, rows[hit].get("RETURN_CODE")) for sql, hit in zip(agent_sql, hits) if hit is not None]
+    missing = [sql for sql, hit in zip(agent_sql, hits) if hit is None]
 
     print(f"=== The agent's statements (harness log): {len(agent_sql)}")
     print(f"=== Recorded by the database:            {len(found)}\n")
