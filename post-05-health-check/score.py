@@ -2,7 +2,7 @@
 # =============================================================================
 # score.py  (run by 05_score.sh)
 #
-# Compares the agent's findings with my checklist's, and writes a scorecard
+# Compares the agent's findings with the checklist's, and writes a scorecard
 # with a SUGGESTED mark for every line. The suggestion is mechanical; the
 # final mark is mine to give, by editing the scorecard:
 #   ✅ found it, explained correctly    ⚠️ found it, explanation wrong or shallow
@@ -132,10 +132,10 @@ def main() -> int:
         mark = "✅ ?" if hits else "❌ ?"
         print(f"| {c['cat']} | {cell(c['obj'])} | {is_seeded} | {cell(c['what'])} | {said} | {mark} |")
 
-    # Agent findings with no counterpart: invented, or real and missing from my checklist.
+    # Agent findings with no counterpart: invented, or real and missing from the checklist.
     print("\n## Agent findings not on the checklist\n")
     if extras:
-        print("Each is ✅ (real, and my checklist doesn't cover it), ➖ (true, but not")
+        print("Each is ✅ (real, and the checklist doesn't cover it), ➖ (true, but not")
         print("a problem) or 👻 (wrong). Check each against the database (06_judge_extras.sh).\n")
         print("| Category | Object | Agent says | Mark |")
         print("|---|---|---|---|")

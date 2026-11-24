@@ -4,7 +4,7 @@
 #
 # Puts the agent's account into its post 05 state, deliberately and visibly:
 #   1. its role is rebuilt from post 03's granted_views.txt PLUS this folder's
-#      health_check_views.txt (the views my own checklist reads, no more)
+#      health_check_views.txt (the views the checklist script reads, no more)
 #   2. SQL Firewall goes to OBSERVE mode: the allow-list taught in post 03 is
 #      for a different job, so it logs the health-check SQL instead of blocking it
 #   3. a check that post 04's audit policy is on, so the run is recorded

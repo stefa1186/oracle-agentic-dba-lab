@@ -2,7 +2,7 @@
 # post-03-least-privilege/granted_views.txt. Same format: one SYS object per
 # line, upper case; V$ views through their SYS.V_$ views.
 #
-# The rule for this list: the agent may see exactly what my own checklist
+# The rule for this list: the agent may see exactly what the checklist script
 # (dba_checklist.sql) reads, no more, so the comparison is fair. No AWR or
 # ASH views: on Enterprise Edition those need the Diagnostics Pack.
 #

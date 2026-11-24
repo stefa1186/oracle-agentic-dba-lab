@@ -1,7 +1,7 @@
 -- =============================================================================
 -- judge_extras.sql  (run by 06_judge_extras.sh, as SYSDBA)
 --
--- The facts needed to judge the agent's findings that are NOT on my checklist:
+-- The facts needed to judge the agent's findings that are NOT on the checklist:
 -- is each one a real problem, true but harmless, or wrong? Read-only.
 --
 -- One section per kind of extra finding seen in the post 05 runs:

@@ -1,6 +1,6 @@
-# Post 05 – Health check: an AI agent vs. my checklist
+# Post 05 – Health check: an AI agent vs. a checklist script
 
-Seeds problems I know are there (the answer key), runs my own checklist,
+Seeds problems I know are there (the answer key), runs the checklist script,
 lets the agent run a health check with no hints about what was seeded, and
 scores its findings against the checklist.
 
@@ -27,7 +27,7 @@ Everything is reverted by `99_cleanup.sh`.
 | `health_check_views.txt` | The views added to the agent's role for this test |
 | `01_prepare_agent.sh` | Widens the role, firewall to observe, checks the audit policy is on |
 | `02_seed_known_problems.sh` + `seed_known_problems.sql` | The answer key: a near-full tablespace, stale (locked) statistics, an invalid view and procedure, an unusable index, a non-Oracle account with DBA. Saved as `answer_key.txt` |
-| `03_dba_checklist.sh` + `dba_checklist.sql` | My checklist on the same database (13 checks, 6 categories). Saved as `checklist.txt`; fails if it misses a seeded problem |
+| `03_dba_checklist.sh` + `dba_checklist.sql` | The checklist script on the same database (13 checks, 6 categories). Saved as `checklist.txt`; fails if it misses a seeded problem |
 | `04_prompt.md` | The agent's task: a health check, findings in a fixed one-line format |
 | `05_score.sh [run]` + `score.py` | Pairs the agent's findings with the checklist's; writes `scorecard.md` with suggested marks |
 | `06_judge_extras.sh` + `judge_extras.sql` | Read-only facts for judging the agent's findings that aren't on the checklist |
@@ -81,8 +81,8 @@ are mine**, edited in `scorecard.md`:
 - 👻 reported a problem that doesn't exist
 - ➖ true, but not a problem: noise a DBA would filter out (agent's extra findings only)
 
-An agent finding that isn't on my checklist is not automatically 👻: it may
-be real and my checklist may not cover it. Each one gets checked against the
+An agent finding that isn't on the checklist is not automatically 👻: it may
+be real and the checklist may not cover it. Each one gets checked against the
 database before it's marked: `06_judge_extras.sh` prints the facts needed
 (room to grow per tablespace, whether DBA or OPEN accounts can log in at
 all, memory parameters in the CDB vs. the PDB, where archived logs go,
@@ -129,7 +129,7 @@ are probably not multiplexed. They count: a health check should find them.
   for at step 41; 351,298 tokens in.
 - **Score:** all 10 checklist findings found (the 3 redo groups as one line,
   paired by hand): 9 ✅, 1 ⚠️ (stale statistics not seen as locked).
-- **Extra findings (11):** 1 real and missing from my checklist (no recovery
+- **Extra findings (11):** 1 real and missing from the checklist (no recovery
   area, archived logs in `$ORACLE_HOME/dbs/arch`), 5 ➖, 5 👻. All five 👻
   are a correct number read without its context: free space without
   autoextend, OPEN without AUTHENTICATION_TYPE NONE, the PDB's SGA_TARGET (0)
