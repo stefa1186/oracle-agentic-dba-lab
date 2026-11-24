@@ -10,8 +10,8 @@ a SQL Firewall allow-list, the audit policy, agent harness).
 ## What changes for the agent, and why
 
 A health check needs to see more than post 03's six views. The extra views
-are listed in `health_check_views.txt`, one per line: **exactly what my own
-checklist reads, no more**, so the comparison is fair. No AWR or ASH views.
+are listed in `health_check_views.txt`, one per line: **exactly what the checklist
+script reads, no more**, so the comparison is fair. No AWR or ASH views.
 
 SQL Firewall goes to **observe** mode: its allow-list was taught for post
 03's job, and would block every health-check query. It still logs them.

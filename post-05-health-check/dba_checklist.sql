@@ -1,7 +1,7 @@
 -- =============================================================================
 -- dba_checklist.sql  (run by 03_dba_checklist.sh, as SYSDBA)
 --
--- My own health check, condensed to what can be checked with a query and an
+-- A classic DBA health check, condensed to what can be checked with a query and an
 -- explicit threshold. Read-only: it changes nothing.
 --
 -- One line per result:

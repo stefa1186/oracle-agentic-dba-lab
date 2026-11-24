@@ -2,7 +2,7 @@
 # =============================================================================
 # 03_dba_checklist.sh
 #
-# Runs my own health check (dba_checklist.sql) on the same database the agent
+# Runs the checklist script (dba_checklist.sql) on the same database the agent
 # will check, and saves the result to output/post-05-health-check/checklist.txt.
 # Then checks the checklist itself: every seeded problem in the answer key
 # must appear among its findings, or the checklist is not a fair yardstick.
